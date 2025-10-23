@@ -1,0 +1,196 @@
+# ===================================================================
+# KAPASITETSLEDD-SYSTEM FOR NORGE
+# Holder deg under 5 kW kapasitetsledd
+# ===================================================================
+# LEGG TIL I DIN configuration.yaml
+# ===================================================================
+
+# TEMPLATE SENSORER - Legg til under "template:" seksjonen
+template:
+  - sensor:
+      # ===================================================================
+      # KAPASITETSLEDD: Aktuelt gjennomsnitt av topp-3
+      # ===================================================================
+      - name: "Kapasitetsledd aktuelt"
+        unique_id: kapasitetsledd_aktuelt
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        icon: mdi:transmission-tower
+        state: >
+          {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
+          {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
+          {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
+          {% if peak1 > 0 and peak2 > 0 and peak3 > 0 %}
+            {{ ((peak1 + peak2 + peak3) / 3) | round(2) }}
+          {% elif peak1 > 0 and peak2 > 0 %}
+            {{ ((peak1 + peak2) / 2) | round(2) }}
+          {% elif peak1 > 0 %}
+            {{ peak1 | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          peak_1: "{{ states('input_number.peak_1_verdi') | float(0) | round(2) }}"
+          peak_2: "{{ states('input_number.peak_2_verdi') | float(0) | round(2) }}"
+          peak_3: "{{ states('input_number.peak_3_verdi') | float(0) | round(2) }}"
+          peak_1_tid: "{{ states('input_text.peak_1_tidspunkt') }}"
+          peak_2_tid: "{{ states('input_text.peak_2_tidspunkt') }}"
+          peak_3_tid: "{{ states('input_text.peak_3_tidspunkt') }}"
+
+      # ===================================================================
+      # TRYGG GRENSE: Hva kan jeg bruke uten å påvirke kapasitetsleddet?
+      # ===================================================================
+      - name: "Kapasitetsledd trygg grense"
+        unique_id: kapasitetsledd_trygg_grense
+        unit_of_measurement: "kWh"
+        icon: mdi:shield-check
+        state: >
+          {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
+          {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
+          {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
+          {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+
+          {# Hvis vi har mindre enn 3 topper, bruk målgrensen direkte #}
+          {% if peak3 == 0 %}
+            {{ maal | round(1) }}
+          {% else %}
+            {# Vi har 3 topper - trygg grense er laveste topp minus litt margin #}
+            {{ (peak3 - 0.1) | round(1) }}
+          {% endif %}
+
+      # ===================================================================
+      # POTENSIELT KAPASITETSLEDD: Hva blir det hvis prognosen realiseres?
+      # ===================================================================
+      - name: "Kapasitetsledd hvis prognose"
+        unique_id: kapasitetsledd_hvis_prognose
+        unit_of_measurement: "kW"
+        device_class: power
+        icon: mdi:crystal-ball
+        state: >
+          {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+          {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
+          {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
+          {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
+
+          {# Hvis prognosen er høyere enn noen av de 3 toppene #}
+          {% if prognose > peak1 %}
+            {# Ny topp #1 #}
+            {{ ((prognose + peak1 + peak2) / 3) | round(2) }}
+          {% elif prognose > peak2 %}
+            {# Ny topp #2 #}
+            {{ ((peak1 + prognose + peak2) / 3) | round(2) }}
+          {% elif prognose > peak3 %}
+            {# Ny topp #3 #}
+            {{ ((peak1 + peak2 + prognose) / 3) | round(2) }}
+          {% else %}
+            {# Påvirker ikke topp-3 #}
+            {{ states('sensor.kapasitetsledd_aktuelt') | float(0) }}
+          {% endif %}
+
+      # ===================================================================
+      # MARGIN: Hvor mye margin har vi til målgrensen?
+      # ===================================================================
+      - name: "Kapasitetsledd margin"
+        unique_id: kapasitetsledd_margin
+        unit_of_measurement: "kW"
+        icon: mdi:gauge
+        state: >
+          {% set aktuelt = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+          {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+          {{ (maal - aktuelt) | round(2) }}
+        attributes:
+          prosent: >
+            {% set aktuelt = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+            {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+            {% if maal > 0 %}
+              {{ ((aktuelt / maal) * 100) | round(0) | int }}
+            {% else %}
+              0
+            {% endif %}
+
+      # ===================================================================
+      # VURDERING: Skal vi kutte nå?
+      # ===================================================================
+      - name: "Kapasitetsledd kutt anbefaling"
+        unique_id: kapasitetsledd_kutt_anbefaling
+        icon: mdi:alert-decagram
+        state: >
+          {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+          {% set hvis_prognose = states('sensor.kapasitetsledd_hvis_prognose') | float(0) %}
+          {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+          {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
+
+          {% if prognose > trygg and hvis_prognose > maal %}
+            KUTT NÅ!
+          {% elif prognose > trygg %}
+            VARSLING
+          {% else %}
+            TRYGT
+          {% endif %}
+        attributes:
+          grunn: >
+            {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+            {% set hvis_prognose = states('sensor.kapasitetsledd_hvis_prognose') | float(0) %}
+            {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+            {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
+
+            {% if prognose > trygg and hvis_prognose > maal %}
+              Prognose {{ prognose }} kWh vil gi kapasitetsledd {{ hvis_prognose }} kW (over mål {{ maal }} kW)
+            {% elif prognose > trygg %}
+              Prognose {{ prognose }} kWh er over trygg grense {{ trygg }} kWh, men kapasitetsledd {{ hvis_prognose }} kW er under mål
+            {% else %}
+              Prognose {{ prognose }} kWh er under trygg grense {{ trygg }} kWh
+            {% endif %}
+
+
+# ===================================================================
+# INPUT_NUMBER - Legg til under "input_number:" seksjonen
+# ===================================================================
+input_number:
+  # Dine eksisterende peak_1_verdi, peak_2_verdi, peak_3_verdi ...
+
+  # NYE:
+  kapasitetsledd_maal:
+    name: "Kapasitetsledd - Målgrense"
+    min: 2.0
+    max: 25.0
+    step: 0.5
+    initial: 5.0
+    unit_of_measurement: "kW"
+    mode: box
+    icon: mdi:target
+
+  # Konfigurerbar kutt-hysterese (hvor lenge over grense før kutt)
+  kapasitetsledd_kutt_hysterese_min:
+    name: "Kapasitetsledd - Kutt hysterese (minutter)"
+    min: 1
+    max: 10
+    step: 1
+    initial: 2
+    unit_of_measurement: "min"
+    mode: box
+    icon: mdi:timer-sand
+
+  # Konfigurerbar gjenopprett-hysterese
+  kapasitetsledd_gjenopprett_hysterese_min:
+    name: "Kapasitetsledd - Gjenopprett hysterese (minutter)"
+    min: 2
+    max: 10
+    step: 1
+    initial: 5
+    unit_of_measurement: "min"
+    mode: box
+    icon: mdi:timer-check
+
+
+# ===================================================================
+# BINARY SENSOR - Legg til under "template:" seksjonen (valgfritt)
+# ===================================================================
+  - binary_sensor:
+      - name: "Kapasitetsledd faresone"
+        unique_id: kapasitetsledd_faresone
+        device_class: problem
+        state: >
+          {% set margin = states('sensor.kapasitetsledd_margin') | float(0) %}
+          {{ margin < 0.5 }}

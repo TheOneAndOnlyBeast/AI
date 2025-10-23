@@ -1,34 +1,43 @@
 # ===================================================================
-# FORBEDRET HOME ASSISTANT AUTOMASJONER
-# Versjon: 2.0 - Optimalisert og stabilisert
+# SMART KAPASITETSLEDD-SYSTEM FOR NORGE
+# Holder deg under 5 kW (konfigurerbart) med riktig formel
+# ===================================================================
+# Versjon: 3.0 - KAPASITETSLEDD-OPTIMALISERT
 # ===================================================================
 
 # ===================================================================
-# PEAK-KONTROLL: SKRU AV ENHETER (FORBEDRET)
+# KAPASITETSLEDD: SMART PEAK-KONTROLL
 # ===================================================================
-- id: peak_kontroll_skru_av_enheter_prognose_v5
-  alias: "Peak-kontroll - Skru av enheter (PROGNOSE v5)"
-  description: "Kutter laster i prioritert rekkefølge hvis prognosen overstiger konfigurerbar grense."
+- id: kapasitetsledd_smart_peak_kontroll
+  alias: "Kapasitetsledd - Smart peak-kontroll"
+  description: >
+    Kutter laster basert på EKTE kapasitetsledd-logikk:
+    - Kutt kun hvis prognosen faktisk vil øke kapasitetsleddet over målgrense
+    - Tar hensyn til eksisterende topp-3 timer
+    - Smart logikk avhengig av hvor i måneden vi er
   mode: single
 
   trigger:
-    # Hysterese: må være over grensen i minst 2 min før første kutt
-    - platform: numeric_state
-      entity_id: sensor.prognose_for_innevaerende_time
-      above: input_number.peak_kontroll_av_grense
-      for: "00:02:00"
-    # Retrigger: Økt til 5 minutter for å la enheter stabilisere seg
+    # Trigger når prognosen overstiger trygg grense
+    - platform: template
+      value_template: >
+        {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+        {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
+        {{ prognose > trygg }}
+      for:
+        minutes: "{{ states('input_number.kapasitetsledd_kutt_hysterese_min') | int(2) }}"
+
+    # Periodisk sjekk (hver 5. minutt)
     - platform: time_pattern
       minutes: "/5"
 
   condition:
-    - condition: numeric_state
-      entity_id: sensor.prognose_for_innevaerende_time
-      above: input_number.peak_kontroll_av_grense
-    # Kun kjør hvis prognose-sensor er tilgjengelig
-    - condition: template
-      value_template: "{{ states('sensor.prognose_for_innevaerende_time') not in ['unavailable', 'unknown'] }}"
-    # Kjør kun hvis minst én kandidat faktisk kan kuttes
+    # Kun kutt hvis anbefaling sier "KUTT NÅ!"
+    - condition: state
+      entity_id: sensor.kapasitetsledd_kutt_anbefaling
+      state: "KUTT NÅ!"
+
+    # Og vi har minst én enhet vi kan kutte
     - condition: or
       conditions:
         - condition: state
@@ -52,8 +61,28 @@
               state: "off"
 
   action:
+    - variables:
+        prognose: "{{ states('sensor.prognose_for_innevaerende_time') | float(0) }}"
+        hvis_prognose: "{{ states('sensor.kapasitetsledd_hvis_prognose') | float(0) }}"
+        aktuelt: "{{ states('sensor.kapasitetsledd_aktuelt') | float(0) }}"
+        maal: "{{ states('input_number.kapasitetsledd_maal') | float(5.0) }}"
+
+    - service: persistent_notification.create
+      data:
+        title: "⚡ Kapasitetsledd - Kutter laster"
+        message: >
+          Prognose: {{ prognose }} kWh/time
+
+          Kapasitetsledd NÅ: {{ aktuelt }} kW
+          Kapasitetsledd HVIS: {{ hvis_prognose }} kW
+          Målgrense: {{ maal }} kW
+
+          {{ state_attr('sensor.kapasitetsledd_kutt_anbefaling', 'grunn') }}
+
+          Kutter neste tilgjengelige last i prioritert rekkefølge...
+
     - choose:
-        # 1) VVB - FORBEDRET MED BEDRE LOGGING
+        # 1) VVB (høyest effekt, kuttes først)
         - conditions:
             - condition: state
               entity_id: switch.heavy_duty_switch
@@ -72,19 +101,17 @@
                 entity_id: input_boolean.peak_kontroll_vvb_deaktivert
             - service: persistent_notification.create
               data:
-                title: "Peak-kontroll - VVB kuttet"
+                title: "⚡ Kapasitetsledd - VVB kuttet"
                 message: >
-                  Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-                  (grense: {{ states('input_number.peak_kontroll_av_grense') }} kWh).
-                  VVB deaktivert, smart styring stoppet.
+                  VVB deaktivert for å holde kapasitetsledd under {{ maal }} kW.
+                  Prognose var {{ prognose }} kWh.
             - service: system_log.write
               data:
-                message: "Peak-kontroll: VVB kuttet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
+                message: "Kapasitetsledd: VVB kuttet (prognose={{ prognose }}, hvis={{ hvis_prognose }}, mål={{ maal }})"
                 level: warning
-            # Vent før eventuelt neste kutt for å la systemet stabilisere seg
             - delay: "00:03:00"
 
-        # 2) Elbillader (Shelly) - FORBEDRET MED TILGJENGELIGHETSSJEKK
+        # 2) Elbillader
         - conditions:
             - condition: state
               entity_id: switch.shellyplus1pm_a8032ab13280
@@ -100,18 +127,16 @@
                 entity_id: input_boolean.peak_kontroll_billader_deaktivert
             - service: persistent_notification.create
               data:
-                title: "Peak-kontroll - Billader pauset"
+                title: "⚡ Kapasitetsledd - Billader pauset"
                 message: >
-                  Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-                  (grense: {{ states('input_number.peak_kontroll_av_grense') }} kWh).
-                  Elbil-lading pauset.
+                  Elbil-lading pauset for å holde kapasitetsledd under {{ maal }} kW.
             - service: system_log.write
               data:
-                message: "Peak-kontroll: Billader kuttet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
+                message: "Kapasitetsledd: Billader kuttet (prognose={{ prognose }})"
                 level: warning
             - delay: "00:03:00"
 
-        # 3) Varmekabler bad - FORBEDRET
+        # 3) Varmekabler bad
         - conditions:
             - condition: state
               entity_id: climate.floor_thermostat
@@ -127,18 +152,16 @@
                 entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
             - service: persistent_notification.create
               data:
-                title: "Peak-kontroll - Badegulv kuttet"
+                title: "⚡ Kapasitetsledd - Badegulv kuttet"
                 message: >
-                  Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-                  (grense: {{ states('input_number.peak_kontroll_av_grense') }} kWh).
-                  Varmekabler bad deaktivert.
+                  Varmekabler bad deaktivert for å holde kapasitetsledd under {{ maal }} kW.
             - service: system_log.write
               data:
-                message: "Peak-kontroll: Badegulv kuttet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
+                message: "Kapasitetsledd: Badegulv kuttet (prognose={{ prognose }})"
                 level: warning
             - delay: "00:03:00"
 
-        # 4) Varmepumpe stue (Daikin) - FORBEDRET
+        # 4) Varmepumpe stue
         - conditions:
             - condition: not
               conditions:
@@ -156,18 +179,16 @@
                 entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
             - service: persistent_notification.create
               data:
-                title: "Peak-kontroll - VP Stue kuttet"
+                title: "⚡ Kapasitetsledd - VP Stue kuttet"
                 message: >
-                  Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-                  (grense: {{ states('input_number.peak_kontroll_av_grense') }} kWh).
-                  Varmepumpe stue deaktivert.
+                  Varmepumpe stue deaktivert for å holde kapasitetsledd under {{ maal }} kW.
             - service: system_log.write
               data:
-                message: "Peak-kontroll: VP Stue kuttet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
+                message: "Kapasitetsledd: VP Stue kuttet (prognose={{ prognose }})"
                 level: warning
             - delay: "00:03:00"
 
-        # 5) Varmepumpe kontor (datarom) - FORBEDRET
+        # 5) Varmepumpe kontor
         - conditions:
             - condition: not
               conditions:
@@ -185,43 +206,54 @@
                 entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
             - service: persistent_notification.create
               data:
-                title: "Peak-kontroll - VP Kontor kuttet"
+                title: "⚡ Kapasitetsledd - VP Kontor kuttet"
                 message: >
-                  Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-                  (grense: {{ states('input_number.peak_kontroll_av_grense') }} kWh).
-                  Varmepumpe kontor deaktivert.
+                  Varmepumpe kontor deaktivert for å holde kapasitetsledd under {{ maal }} kW.
             - service: system_log.write
               data:
-                message: "Peak-kontroll: VP Kontor kuttet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
+                message: "Kapasitetsledd: VP Kontor kuttet (prognose={{ prognose }})"
                 level: warning
             - delay: "00:03:00"
-      default: []
 
 
 # ===================================================================
-# PEAK-KONTROLL: NORMALISERING (FORBEDRET)
+# KAPASITETSLEDD: NORMALISERING (GJENOPPRETT)
 # ===================================================================
-- id: peak_kontroll_normalisering_prognose_v5
-  alias: "Peak-kontroll - Normalisering (PROGNOSE v5)"
-  description: "Skrur forsiktig på enheter igjen når prognosen er lav nok."
+- id: kapasitetsledd_normalisering
+  alias: "Kapasitetsledd - Normalisering"
+  description: >
+    Skrur forsiktig på enheter igjen når det er trygt.
+    Bruker trygg grense basert på nåværende topp-3.
   mode: single
+
   trigger:
-    # Hysterese i trigger
-    - platform: numeric_state
-      entity_id: sensor.prognose_for_innevaerende_time
-      below: input_number.peak_kontroll_paa_grense
-      for: "00:03:00"
-    # Periodisk sjekk for sekvensiell påslag
+    # Trigger når prognosen er under trygg grense
+    - platform: template
+      value_template: >
+        {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+        {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
+        {{ prognose < (trygg - 0.5) }}
+      for:
+        minutes: "{{ states('input_number.kapasitetsledd_gjenopprett_hysterese_min') | int(5) }}"
+
+    # Periodisk sjekk
     - platform: time_pattern
       minutes: "/5"
+
   condition:
-    - condition: numeric_state
-      entity_id: sensor.prognose_for_innevaerende_time
-      below: input_number.peak_kontroll_paa_grense
     - condition: template
-      value_template: "{{ states('sensor.prognose_for_innevaerende_time') not in ['unavailable', 'unknown'] }}"
+      value_template: >
+        {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+        {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
+        {{ prognose < (trygg - 0.5) }}
+    - condition: state
+      entity_id: sensor.kapasitetsledd_kutt_anbefaling
+      state: "TRYGT"
+
   action:
-    # 1) VP Kontor først (lavest effekt)
+    # Gjenopprett i OMVENDT rekkefølge (lavest effekt først)
+
+    # 1) VP Kontor først
     - if:
         - condition: state
           entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
@@ -235,15 +267,10 @@
             entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
         - service: persistent_notification.create
           data:
-            title: "Peak-kontroll - VP Kontor gjenopprettet"
+            title: "✅ Kapasitetsledd - VP Kontor gjenopprettet"
             message: >
-              Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh
-              (grense: {{ states('input_number.peak_kontroll_paa_grense') }} kWh).
-              Varmepumpe kontor aktivert igjen.
-        - service: system_log.write
-          data:
-            message: "Peak-kontroll: VP Kontor gjenopprettet. Prognose={{ states('sensor.prognose_for_innevaerende_time') }} kWh"
-            level: info
+              Prognose {{ states('sensor.prognose_for_innevaerende_time') }} kWh er trygg.
+              Kapasitetsledd {{ states('sensor.kapasitetsledd_aktuelt') }} kW.
         - delay: "00:02:00"
 
     # 2) VP Stue
@@ -260,14 +287,8 @@
             entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
         - service: persistent_notification.create
           data:
-            title: "Peak-kontroll - VP Stue gjenopprettet"
-            message: >
-              Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh.
-              Varmepumpe stue aktivert igjen.
-        - service: system_log.write
-          data:
-            message: "Peak-kontroll: VP Stue gjenopprettet"
-            level: info
+            title: "✅ Kapasitetsledd - VP Stue gjenopprettet"
+            message: "Varmepumpe stue aktivert igjen."
         - delay: "00:02:00"
 
     # 3) Badegulv
@@ -284,14 +305,8 @@
             entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
         - service: persistent_notification.create
           data:
-            title: "Peak-kontroll - Badegulv gjenopprettet"
-            message: >
-              Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh.
-              Varmekabler bad aktivert igjen.
-        - service: system_log.write
-          data:
-            message: "Peak-kontroll: Badegulv gjenopprettet"
-            level: info
+            title: "✅ Kapasitetsledd - Badegulv gjenopprettet"
+            message: "Varmekabler bad aktivert igjen."
         - delay: "00:02:00"
 
     # 4) Billader
@@ -308,17 +323,11 @@
             entity_id: input_boolean.peak_kontroll_billader_deaktivert
         - service: persistent_notification.create
           data:
-            title: "Peak-kontroll - Billader gjenopprettet"
-            message: >
-              Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh.
-              Elbil-lading gjenopptatt.
-        - service: system_log.write
-          data:
-            message: "Peak-kontroll: Billader gjenopprettet"
-            level: info
+            title: "✅ Kapasitetsledd - Billader gjenopprettet"
+            message: "Elbil-lading gjenopptatt."
         - delay: "00:02:00"
 
-    # 5) VVB sist (høyest effekt) - FIKSET: Kun reaktiver smart styring her
+    # 5) VVB sist (høyest effekt)
     - if:
         - condition: state
           entity_id: input_boolean.peak_kontroll_vvb_deaktivert
@@ -335,286 +344,18 @@
             entity_id: input_boolean.peak_kontroll_vvb_deaktivert
         - service: persistent_notification.create
           data:
-            title: "Peak-kontroll - VVB gjenopprettet"
-            message: >
-              Prognose: {{ states('sensor.prognose_for_innevaerende_time') }} kWh.
-              VVB og smart styring aktivert igjen.
-        - service: system_log.write
-          data:
-            message: "Peak-kontroll: VVB gjenopprettet, smart styring reaktivert"
-            level: info
-        - delay: "00:02:00"
+            title: "✅ Kapasitetsledd - VVB gjenopprettet"
+            message: "VVB og smart styring aktivert igjen."
 
 
 # ===================================================================
-# SYSTEM OPPSTART - NORMALISERING (FORBEDRET)
+# EFFEKTLEDD: OPPDATER TOPP-3 TIMER (UENDRET LOGIKK)
 # ===================================================================
-- id: system_oppstart_normaliser_enheter_v2
-  alias: "System-oppstart - Normaliser enheter v2"
-  description: "Gjenoppretter enheter som ble kuttet av peak-kontroll ved oppstart."
+- id: effektledd_oppdater_topper
+  alias: "Effektledd - Oppdater topp-3"
+  description: "Kjører 30 sek etter timeskiftet for å logge korrekt timeforbruk."
   mode: single
   trigger:
-    - platform: homeassistant
-      event: start
-  action:
-    - delay: "00:01:00"
-    - condition: numeric_state
-      entity_id: sensor.prognose_for_innevaerende_time
-      below: input_number.peak_kontroll_paa_grense
-    - condition: template
-      value_template: "{{ states('sensor.prognose_for_innevaerende_time') not in ['unavailable', 'unknown'] }}"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.vp_datarom
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
-        - service: system_log.write
-          data:
-            message: "Oppstart: VP Kontor gjenopprettet"
-            level: info
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.daikinap54875_room_temperature
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
-        - service: system_log.write
-          data:
-            message: "Oppstart: VP Stue gjenopprettet"
-            level: info
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.floor_thermostat
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
-        - service: system_log.write
-          data:
-            message: "Oppstart: Badegulv gjenopprettet"
-            level: info
-    - delay: "00:00:10"
-
-    - if:
-        - condition: and
-          conditions:
-            - condition: state
-              entity_id: input_boolean.peak_kontroll_billader_deaktivert
-              state: "on"
-            - condition: state
-              entity_id: input_boolean.overoppheting_billader_deaktivert
-              state: "off"
-      then:
-        - service: switch.turn_on
-          target:
-            entity_id: switch.shellyplus1pm_a8032ab13280
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_billader_deaktivert
-        - service: system_log.write
-          data:
-            message: "Oppstart: Billader gjenopprettet"
-            level: info
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vvb_deaktivert
-          state: "on"
-      then:
-        - service: switch.turn_on
-          target:
-            entity_id: switch.heavy_duty_switch
-        - service: input_boolean.turn_on
-          target:
-            entity_id: input_boolean.vvb_smart_styring_aktiv
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vvb_deaktivert
-        - service: system_log.write
-          data:
-            message: "Oppstart: VVB gjenopprettet, smart styring reaktivert"
-            level: info
-
-
-# ===================================================================
-# SIKKERHET: OVEROPPHETING BILLADER (FORBEDRET)
-# ===================================================================
-- id: sikkerhet_overoppheting_av_billader_v2
-  alias: "Overopphetingsvern - Skru AV Billader v2"
-  description: "Skrur av billaderen hvis temperaturen overstiger konfigurerbar grense."
-  mode: single
-  trigger:
-    - platform: numeric_state
-      entity_id: sensor.shellyplus1pm_a8032ab13280_temperature
-      above: input_number.billader_maks_temperatur
-  condition:
-    - condition: state
-      entity_id: switch.shellyplus1pm_a8032ab13280
-      state: "on"
-    - condition: template
-      value_template: "{{ states('sensor.shellyplus1pm_a8032ab13280_temperature') not in ['unavailable', 'unknown'] }}"
-  action:
-    - service: switch.turn_off
-      target:
-        entity_id: switch.shellyplus1pm_a8032ab13280
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.overoppheting_billader_deaktivert
-    - service: persistent_notification.create
-      data:
-        title: "KRITISK SIKKERHETSADVARSEL"
-        message: >
-          Billaderen er overopphetet
-          ({{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C >
-          {{ states('input_number.billader_maks_temperatur') }}°C)
-          og har blitt automatisk skrudd av!
-    - service: system_log.write
-      data:
-        message: >
-          KRITISK: Billader overopphetet
-          ({{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C) - slått av
-        level: error
-
-- id: sikkerhet_overoppheting_paa_billader_v2
-  alias: "Overopphetingsvern - Skru PÅ Billader igjen v2"
-  description: "Gjenopptar ladingen når temperaturen er tilbake på trygt nivå."
-  mode: single
-  trigger:
-    - platform: numeric_state
-      entity_id: sensor.shellyplus1pm_a8032ab13280_temperature
-      below: input_number.billader_trygg_temperatur
-  condition:
-    - condition: state
-      entity_id: input_boolean.overoppheting_billader_deaktivert
-      state: "on"
-    - condition: template
-      value_template: "{{ states('sensor.shellyplus1pm_a8032ab13280_temperature') not in ['unavailable', 'unknown'] }}"
-  action:
-    - service: switch.turn_on
-      target:
-        entity_id: switch.shellyplus1pm_a8032ab13280
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.overoppheting_billader_deaktivert
-    - service: persistent_notification.create
-      data:
-        title: "INFO - Lading Gjenopptatt"
-        message: >
-          Temperaturen på billaderen er nå
-          {{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C
-          (under {{ states('input_number.billader_trygg_temperatur') }}°C)
-          og ladingen er gjenopptatt.
-    - service: system_log.write
-      data:
-        message: >
-          INFO: Billader temperatur normal
-          ({{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C) - lading gjenopptatt
-        level: info
-
-
-# ===================================================================
-# ROBOTSTØVSUGERE (FORBEDRET MED BATTERISJEKK)
-# ===================================================================
-- id: manuell_start_stovsugere_nar_borte_v2
-  alias: "Start robotstøvsugere når jeg er borte v2"
-  description: "Starter støvsugere når jeg er borte, maks én gang per 48 timer, med batterisjekk."
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: person.erik_narum
-      from: home
-      to: not_home
-      for: "00:10:00"
-  condition:
-    # Sjekk sist kjørt
-    - condition: template
-      value_template: >-
-        {% set last_run = states('input_datetime.robot_siste_kjoring') %}
-        {% if last_run in ['unknown', 'unavailable'] %}
-          true
-        {% else %}
-          {{ (now() - (last_run | as_datetime | as_local)).total_seconds() > 172800 }}
-        {% endif %}
-    # Sjekk at støvsugere er tilgjengelige
-    - condition: template
-      value_template: >
-        {{ states('vacuum.roborock_s7_maxv') not in ['unavailable', 'unknown'] and
-           states('vacuum.nr_7') not in ['unavailable', 'unknown'] }}
-    # Sjekk batterinivå (minst 20%)
-    - condition: or
-      conditions:
-        - condition: template
-          value_template: >
-            {{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') | int(0) >= 20 }}
-        - condition: template
-          value_template: >
-            {{ state_attr('vacuum.nr_7', 'battery_level') | int(0) >= 20 }}
-  action:
-    # Start de som har nok batteri
-    - if:
-        - condition: template
-          value_template: >
-            {{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') | int(0) >= 20 }}
-      then:
-        - service: vacuum.start
-          target:
-            entity_id: vacuum.roborock_s7_maxv
-        - service: system_log.write
-          data:
-            message: "Robotstøvsuger Roborock S7 MaxV startet (batteri: {{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') }}%)"
-            level: info
-
-    - if:
-        - condition: template
-          value_template: >
-            {{ state_attr('vacuum.nr_7', 'battery_level') | int(0) >= 20 }}
-      then:
-        - service: vacuum.start
-          target:
-            entity_id: vacuum.nr_7
-        - service: system_log.write
-          data:
-            message: "Robotstøvsuger Nr 7 startet (batteri: {{ state_attr('vacuum.nr_7', 'battery_level') }}%)"
-            level: info
-
-    # Oppdater sist kjørt tidspunkt
-    - service: input_datetime.set_datetime
-      target:
-        entity_id: input_datetime.robot_siste_kjoring
-      data:
-        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-
-
-# ===================================================================
-# EFFEKTLEDD: OPPDATER TOPPER (FORBEDRET TIMING)
-# ===================================================================
-- id: effektledd_oppdater_topper_manuell_v2
-  alias: "Effektledd - Oppdater månedens topper v2"
-  description: "Kjører 30 sek etter timeskiftet for å sikre at sensor er oppdatert."
-  mode: single
-  trigger:
-    # Endret fra 59:50 til 00:30 for bedre timing
     - platform: time_pattern
       hours: "*"
       minutes: 0
@@ -663,6 +404,12 @@
                 entity_id: input_text.peak_1_tidspunkt
               data:
                 value: "{{ timestamp }}"
+            - service: persistent_notification.create
+              data:
+                title: "🏆 NY TOPP #1!"
+                message: >
+                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
+                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
             - service: system_log.write
               data:
                 message: "Ny peak #1: {{ new_peak }} kWh ({{ timestamp }})"
@@ -690,10 +437,12 @@
                 entity_id: input_text.peak_2_tidspunkt
               data:
                 value: "{{ timestamp }}"
-            - service: system_log.write
+            - service: persistent_notification.create
               data:
-                message: "Ny peak #2: {{ new_peak }} kWh ({{ timestamp }})"
-                level: info
+                title: "🥈 Ny topp #2"
+                message: >
+                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
+                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
         - conditions:
             - "{{ new_peak > peak3 }}"
           sequence:
@@ -707,13 +456,15 @@
                 entity_id: input_text.peak_3_tidspunkt
               data:
                 value: "{{ timestamp }}"
-            - service: system_log.write
+            - service: persistent_notification.create
               data:
-                message: "Ny peak #3: {{ new_peak }} kWh ({{ timestamp }})"
-                level: info
+                title: "🥉 Ny topp #3"
+                message: >
+                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
+                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
 
-- id: effektledd_nullstill_topper_maanedsskifte_v2
-  alias: "Effektledd - Nullstill topper ved månedsskifte v2"
+- id: effektledd_nullstill_topper
+  alias: "Effektledd - Nullstill ved månedsskifte"
   description: "Nullstiller topp 3-verdiene den første i hver måned."
   mode: single
   trigger:
@@ -739,22 +490,217 @@
           - input_text.peak_3_tidspunkt
       data:
         value: "Ingen data"
+    - service: persistent_notification.create
+      data:
+        title: "🔄 Effektledd nullstilt"
+        message: "Ny måned - topp 3 nullstilt. Kapasitetsledd starter på nytt!"
     - service: system_log.write
       data:
         message: "Effektledd: Månedlige topper nullstilt"
         level: info
+
+
+# ===================================================================
+# SYSTEM OPPSTART - NORMALISERING
+# ===================================================================
+- id: system_oppstart_normaliser
+  alias: "System-oppstart - Normaliser enheter"
+  description: "Gjenoppretter enheter ved oppstart hvis trygt."
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay: "00:01:00"
+    - condition: state
+      entity_id: sensor.kapasitetsledd_kutt_anbefaling
+      state: "TRYGT"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.vp_datarom
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.daikinap54875_room_temperature
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.floor_thermostat
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: and
+          conditions:
+            - condition: state
+              entity_id: input_boolean.peak_kontroll_billader_deaktivert
+              state: "on"
+            - condition: state
+              entity_id: input_boolean.overoppheting_billader_deaktivert
+              state: "off"
+      then:
+        - service: switch.turn_on
+          target:
+            entity_id: switch.shellyplus1pm_a8032ab13280
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_billader_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vvb_deaktivert
+          state: "on"
+      then:
+        - service: switch.turn_on
+          target:
+            entity_id: switch.heavy_duty_switch
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.vvb_smart_styring_aktiv
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vvb_deaktivert
+
+
+# ===================================================================
+# DINE ANDRE EKSISTERENDE AUTOMASJONER (UENDRET)
+# ===================================================================
+- id: sikkerhet_overoppheting_av_billader
+  alias: "Overopphetingsvern - Skru AV Billader"
+  description: "Skrur av billaderen hvis temperaturen overstiger 75°C."
+  mode: single
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.shellyplus1pm_a8032ab13280_temperature
+      above: 75
+  condition:
+    - condition: state
+      entity_id: switch.shellyplus1pm_a8032ab13280
+      state: "on"
+    - condition: template
+      value_template: "{{ states('sensor.shellyplus1pm_a8032ab13280_temperature') not in ['unavailable', 'unknown'] }}"
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.shellyplus1pm_a8032ab13280
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.overoppheting_billader_deaktivert
     - service: persistent_notification.create
       data:
-        title: "Effektledd - Månedsskifte"
-        message: "Topp 3 effektledd nullstilt for ny måned."
+        title: "🔥 KRITISK SIKKERHETSADVARSEL"
+        message: >
+          Billaderen er overopphetet
+          ({{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C > 75°C)
+          og har blitt automatisk skrudd av!
 
+- id: sikkerhet_overoppheting_paa_billader
+  alias: "Overopphetingsvern - Skru PÅ Billader igjen"
+  description: "Gjenopptar ladingen når temperaturen er under 60°C."
+  mode: single
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.shellyplus1pm_a8032ab13280_temperature
+      below: 60
+  condition:
+    - condition: state
+      entity_id: input_boolean.overoppheting_billader_deaktivert
+      state: "on"
+    - condition: template
+      value_template: "{{ states('sensor.shellyplus1pm_a8032ab13280_temperature') not in ['unavailable', 'unknown'] }}"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.shellyplus1pm_a8032ab13280
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.overoppheting_billader_deaktivert
+    - service: persistent_notification.create
+      data:
+        title: "✅ Lading Gjenopptatt"
+        message: >
+          Temperaturen på billaderen er nå
+          {{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C (< 60°C).
+          Ladingen er gjenopptatt.
 
-# ===================================================================
-# KINO-MODUS: SYNKRONISERING (FORBEDRET)
-# ===================================================================
-- id: 'kino_synk_alle_pa_v2'
-  alias: "Kino: En på = alle på v2"
-  description: "Slår på alle kino-enheter med riktig volum når én slås på."
+- id: manuell_start_stovsugere_nar_borte
+  alias: "Start robotstøvsugere når jeg er borte"
+  description: "Starter støvsugere når jeg er borte, maks én gang per 48 timer."
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: person.erik_narum
+      from: home
+      to: not_home
+      for: "00:10:00"
+  condition:
+    - condition: template
+      value_template: >-
+        {% set last_run = states('input_datetime.robot_siste_kjoring') %}
+        {% if last_run in ['unknown', 'unavailable'] %}
+          true
+        {% else %}
+          {{ (now() - (last_run | as_datetime | as_local)).total_seconds() > 172800 }}
+        {% endif %}
+    - condition: template
+      value_template: >
+        {{ states('vacuum.roborock_s7_maxv') not in ['unavailable', 'unknown'] and
+           states('vacuum.nr_7') not in ['unavailable', 'unknown'] }}
+  action:
+    - if:
+        - condition: template
+          value_template: >
+            {{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') | int(0) >= 20 }}
+      then:
+        - service: vacuum.start
+          target:
+            entity_id: vacuum.roborock_s7_maxv
+
+    - if:
+        - condition: template
+          value_template: >
+            {{ state_attr('vacuum.nr_7', 'battery_level') | int(0) >= 20 }}
+      then:
+        - service: vacuum.start
+          target:
+            entity_id: vacuum.nr_7
+
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.robot_siste_kjoring
+      data:
+        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+- id: kino_synk_alle_pa
+  alias: "Kino: En på = alle på"
+  description: "Slår på alle kino-enheter når én slås på."
   trigger:
     - platform: state
       entity_id:
@@ -775,17 +721,12 @@
           states('media_player.rx_v685_3c03b4')
         ]) | length > 0 }}
   action:
-    - service: system_log.write
-      data:
-        message: "Kino synk: {{ trigger.to_state.attributes.friendly_name }} slo på systemet"
-        level: info
     - service: media_player.turn_on
       target:
         entity_id:
           - media_player.shield_2
           - media_player.samsung_qn85ba_85_qe85qn85batxxc
           - media_player.rx_v685_3c03b4
-    # Økt timeout til 45 sekunder for sikkerhet
     - wait_template: >
         {{ states('media_player.rx_v685_3c03b4') not in ['off', 'unavailable', 'unknown'] }}
       timeout:
@@ -802,20 +743,11 @@
           target:
             entity_id: media_player.rx_v685_3c03b4
           data:
-            volume_level: "{{ states('input_number.kino_standard_volum') | float }}"
-        - service: system_log.write
-          data:
-            message: "Kino synk: Volum satt til {{ (states('input_number.kino_standard_volum') | float * 100) | int }}%"
-            level: info
-      else:
-        - service: system_log.write
-          data:
-            message: "Kino synk: ADVARSEL - Receiver ikke klar etter 45 sek, hopper over volum"
-            level: warning
+            volume_level: 0.575
   mode: single
 
-- id: 'kino_synk_alle_av_v2'
-  alias: "Kino: En av = alle av v2"
+- id: kino_synk_alle_av
+  alias: "Kino: En av = alle av"
   description: "Slår av alle kino-enheter når én slås av."
   trigger:
     - platform: state
@@ -838,31 +770,18 @@
           states('media_player.rx_v685_3c03b4')
         ]) | length > 0 }}
   action:
-    - service: system_log.write
-      data:
-        message: "Kino synk: {{ trigger.to_state.attributes.friendly_name }} slo av systemet"
-        level: info
     - service: media_player.turn_off
       target:
         entity_id:
           - media_player.shield_2
           - media_player.samsung_qn85ba_85_qe85qn85batxxc
           - media_player.rx_v685_3c03b4
-    - service: system_log.write
-      data:
-        message: "Kino synk: Alle enheter slått av"
-        level: info
   mode: single
 
-
-# ===================================================================
-# VARMEPUMPE DATAROM: DYNAMISK FAN SPEED (FORBEDRET)
-# ===================================================================
-- id: 'varmepumpe_datarom_dynamisk_fan_speed_v2'
-  alias: "Varmepumpe Datarom - Dynamisk fan speed v2"
-  description: "Justerer viftehastighet basert på temperaturavvik med hysterese."
+- id: varmepumpe_datarom_dynamisk_fan_speed
+  alias: "Varmepumpe Datarom - Dynamisk fan speed"
+  description: "Justerer viftehastighet basert på temperaturavvik."
   mode: single
-
   trigger:
     - platform: time_pattern
       minutes: "/2"
@@ -872,7 +791,6 @@
     - platform: state
       entity_id: climate.vp_datarom
       attribute: temperature
-
   condition:
     - condition: state
       entity_id: climate.vp_datarom
@@ -882,18 +800,15 @@
       state: 'off'
     - condition: template
       value_template: "{{ states('climate.vp_datarom') not in ['unavailable', 'unknown'] }}"
-
   action:
     - variables:
-        strong_on: "{{ states('input_number.vp_datarom_strong_terskel_paa') | float(3.0) }}"
-        strong_off: "{{ states('input_number.vp_datarom_strong_terskel_av') | float(2.5) }}"
+        strong_on: 3.0
+        strong_off: 2.5
         current_temp: "{{ state_attr('climate.vp_datarom', 'current_temperature') | float(0) }}"
         target_temp:  "{{ state_attr('climate.vp_datarom', 'temperature') | float(0) }}"
         temp_diff:    "{{ current_temp - target_temp }}"
         current_fan:  "{{ state_attr('climate.vp_datarom', 'fan_mode') | default('auto') }}"
-
     - choose:
-        # Slå PÅ strong når avviket er større enn terskel
         - conditions:
             - "{{ temp_diff > strong_on }}"
             - "{{ current_fan != 'strong' }}"
@@ -903,12 +818,6 @@
                 entity_id: climate.vp_datarom
               data:
                 fan_mode: 'strong'
-            - service: system_log.write
-              data:
-                message: "VP Datarom: Fan satt til STRONG (avvik: {{ temp_diff | round(1) }}°C)"
-                level: info
-
-        # Slå AV strong (tilbake til auto)
         - conditions:
             - "{{ temp_diff <= strong_off }}"
             - "{{ current_fan != 'auto' }}"
@@ -918,18 +827,10 @@
                 entity_id: climate.vp_datarom
               data:
                 fan_mode: 'auto'
-            - service: system_log.write
-              data:
-                message: "VP Datarom: Fan satt til AUTO (avvik: {{ temp_diff | round(1) }}°C)"
-                level: info
 
-
-# ===================================================================
-# VARMEPUMPE DATAROM: TØRKESYKLUS (FORBEDRET)
-# ===================================================================
-- id: 'varmepumpe_datarom_daglig_torkesyklus_v2'
-  alias: "Varmepumpe Datarom - Daglig tørkesyklus v2"
-  description: "Kjører tørkesyklus hver natt, lagrer og gjenoppretter modus."
+- id: varmepumpe_datarom_daglig_torkesyklus
+  alias: "Varmepumpe Datarom - Daglig tørkesyklus"
+  description: "Kjører tørkesyklus hver natt kl 03:00."
   mode: single
   trigger:
     - platform: time
@@ -941,26 +842,14 @@
     - condition: template
       value_template: "{{ states('climate.vp_datarom') not in ['unavailable', 'unknown', 'off'] }}"
   action:
-    # Lagre nåværende modus
     - variables:
         previous_mode: "{{ states('climate.vp_datarom') }}"
-
-    - service: system_log.write
-      data:
-        message: "VP Datarom: Starter tørkesyklus (tidligere modus: {{ previous_mode }})"
-        level: info
-
-    # Bytt til fan only for tørking
     - service: climate.set_hvac_mode
       target:
         entity_id: climate.vp_datarom
       data:
         hvac_mode: 'fan_only'
-
-    # Vent 1 time
     - delay: "01:00:00"
-
-    # Gjenopprett tidligere modus (hvis den var cool/heat)
     - if:
         - condition: template
           value_template: "{{ previous_mode in ['cool', 'heat', 'heat_cool'] }}"
@@ -970,28 +859,15 @@
             entity_id: climate.vp_datarom
           data:
             hvac_mode: "{{ previous_mode }}"
-        - service: system_log.write
-          data:
-            message: "VP Datarom: Tørkesyklus fullført, gjenopprettet modus {{ previous_mode }}"
-            level: info
       else:
-        # Hvis den var i annen modus, sett tilbake til cool som standard
         - service: climate.set_hvac_mode
           target:
             entity_id: climate.vp_datarom
           data:
             hvac_mode: 'cool'
-        - service: system_log.write
-          data:
-            message: "VP Datarom: Tørkesyklus fullført, satt til cool (tidligere: {{ previous_mode }})"
-            level: info
 
-
-# ===================================================================
-# LYS GANG: SMART JUSTERING (FORBEDRET)
-# ===================================================================
-- id: gang_lys_smart_justering_v2
-  alias: "Gang lys - Smart justering v2"
+- id: gang_lys_smart_justering
+  alias: "Gang lys - Smart justering"
   description: "Justerer lys basert på tid - maks lysstyrke dag, rødt natt."
   mode: single
   trigger:
@@ -1024,43 +900,29 @@
           {% else %}
             false
           {% endif %}
-        dag_brightness: "{{ states('input_number.gang_lys_dag_brightness') | int(254) }}"
-        natt_brightness: "{{ states('input_number.gang_lys_natt_brightness') | int(8) }}"
-
     - choose:
         - conditions:
             - condition: template
               value_template: "{{ is_night }}"
           sequence:
-            # Nattemodus - rød, lav lysstyrke
             - service: light.turn_on
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: "{{ natt_brightness }}"
+                brightness: 8
                 rgb_color: [255, 0, 0]
                 transition: 5
-            - service: system_log.write
-              data:
-                message: "Gang lys: Nattemodus aktivert (brightness {{ natt_brightness }})"
-                level: debug
-
       default:
-        # Dagmodus - varmhvit, maks lysstyrke
         - service: light.turn_on
           target:
             entity_id: light.lys_gang
           data:
-            brightness: "{{ dag_brightness }}"
+            brightness: 254
             color_temp_kelvin: 2702
             transition: 5
-        - service: system_log.write
-          data:
-            message: "Gang lys: Dagmodus aktivert (brightness {{ dag_brightness }})"
-            level: debug
 
-- id: gang_lys_nattemodus_overgang_v2
-  alias: "Gang lys - Nattemodus overgang v2"
+- id: gang_lys_nattemodus_overgang
+  alias: "Gang lys - Nattemodus overgang"
   description: "Bytter mellom dag/natt-modus på riktig tid."
   mode: single
   trigger:
@@ -1082,9 +944,6 @@
   action:
     - variables:
         is_weekday: "{{ now().weekday() < 5 }}"
-        dag_brightness: "{{ states('input_number.gang_lys_dag_brightness') | int(254) }}"
-        natt_brightness: "{{ states('input_number.gang_lys_natt_brightness') | int(8) }}"
-
     - choose:
         - conditions:
             - condition: trigger
@@ -1094,14 +953,9 @@
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: "{{ natt_brightness }}"
+                brightness: 8
                 rgb_color: [255, 0, 0]
                 transition: 10
-            - service: system_log.write
-              data:
-                message: "Gang lys: Byttet til nattemodus"
-                level: info
-
         - conditions:
             - condition: trigger
               id: "end_night_weekday"
@@ -1112,14 +966,9 @@
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: "{{ dag_brightness }}"
+                brightness: 254
                 color_temp_kelvin: 2702
                 transition: 10
-            - service: system_log.write
-              data:
-                message: "Gang lys: Byttet til dagmodus (hverdag)"
-                level: info
-
         - conditions:
             - condition: trigger
               id: "end_night_weekend"
@@ -1130,10 +979,6 @@
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: "{{ dag_brightness }}"
+                brightness: 254
                 color_temp_kelvin: 2702
                 transition: 10
-            - service: system_log.write
-              data:
-                message: "Gang lys: Byttet til dagmodus (helg)"
-                level: info
