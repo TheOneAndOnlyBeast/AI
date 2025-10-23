@@ -1,0 +1,263 @@
+# ===================================================================
+# TILLEGG TIL CONFIGURATION.YAML
+# ===================================================================
+# Kopier innholdet under de eksisterende input_number seksjonene
+# i din configuration.yaml (under "input_number:")
+# ===================================================================
+
+# LEGG TIL UNDER "input_number:" i configuration.yaml:
+
+  # Peak-kontroll terskler
+  peak_kontroll_av_grense:
+    name: "Peak-kontroll - Avslåingsgrense"
+    min: 3.0
+    max: 10.0
+    step: 0.1
+    initial: 4.7
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-alert
+
+  peak_kontroll_paa_grense:
+    name: "Peak-kontroll - Påslåingsgrense"
+    min: 2.0
+    max: 8.0
+    step: 0.1
+    initial: 3.8
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-outline
+
+  # Billader temperatursikkerhet
+  billader_maks_temperatur:
+    name: "Billader - Maks temperatur"
+    min: 60
+    max: 85
+    step: 1
+    initial: 75
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-alert
+
+  billader_trygg_temperatur:
+    name: "Billader - Trygg temperatur"
+    min: 40
+    max: 70
+    step: 1
+    initial: 60
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-check
+
+  # Kino-system
+  kino_standard_volum:
+    name: "Kino - Standard volum"
+    min: 0.0
+    max: 1.0
+    step: 0.025
+    initial: 0.575
+    mode: slider
+    icon: mdi:volume-high
+
+  # Varmepumpe datarom - fan speed kontroll
+  vp_datarom_strong_terskel_paa:
+    name: "VP Datarom - Strong på-terskel"
+    min: 1.0
+    max: 5.0
+    step: 0.5
+    initial: 3.0
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-plus
+
+  vp_datarom_strong_terskel_av:
+    name: "VP Datarom - Strong av-terskel"
+    min: 0.5
+    max: 4.0
+    step: 0.5
+    initial: 2.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-minus
+
+  # Gang lys - brightness kontroll
+  gang_lys_dag_brightness:
+    name: "Gang lys - Dag brightness"
+    min: 50
+    max: 255
+    step: 1
+    initial: 254
+    mode: slider
+    icon: mdi:brightness-7
+
+  gang_lys_natt_brightness:
+    name: "Gang lys - Natt brightness"
+    min: 1
+    max: 50
+    step: 1
+    initial: 8
+    mode: slider
+    icon: mdi:brightness-4
+
+
+# ===================================================================
+# FULLSTENDIG EKSEMPEL PÅ HVORDAN DIN CONFIGURATION.YAML BØR SE UT:
+# ===================================================================
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Includes for automations, scripts, etc.
+automation: !include automations.yaml
+automation manual: !include automations_manual.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# ===================================================================
+# INPUT_BOOLEAN
+# ===================================================================
+input_boolean:
+  vvb_smart_styring_aktiv:
+    name: "VVB Smart Styring Aktiv"
+    initial: true
+    icon: mdi:water-boiler-auto
+
+# ===================================================================
+# INPUT_NUMBER (EKSISTERENDE + NYE)
+# ===================================================================
+input_number:
+  # Eksisterende effektledd-tracking
+  peak_1_verdi:
+    name: "Effektledd - Peak #1 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
+  peak_2_verdi:
+    name: "Effektledd - Peak #2 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
+  peak_3_verdi:
+    name: "Effektledd - Peak #3 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
+  # NYE: Peak-kontroll terskler
+  peak_kontroll_av_grense:
+    name: "Peak-kontroll - Avslåingsgrense"
+    min: 3.0
+    max: 10.0
+    step: 0.1
+    initial: 4.7
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-alert
+
+  peak_kontroll_paa_grense:
+    name: "Peak-kontroll - Påslåingsgrense"
+    min: 2.0
+    max: 8.0
+    step: 0.1
+    initial: 3.8
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-outline
+
+  # NYE: Billader temperatursikkerhet
+  billader_maks_temperatur:
+    name: "Billader - Maks temperatur"
+    min: 60
+    max: 85
+    step: 1
+    initial: 75
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-alert
+
+  billader_trygg_temperatur:
+    name: "Billader - Trygg temperatur"
+    min: 40
+    max: 70
+    step: 1
+    initial: 60
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-check
+
+  # NYE: Kino-system
+  kino_standard_volum:
+    name: "Kino - Standard volum"
+    min: 0.0
+    max: 1.0
+    step: 0.025
+    initial: 0.575
+    mode: slider
+    icon: mdi:volume-high
+
+  # NYE: Varmepumpe datarom
+  vp_datarom_strong_terskel_paa:
+    name: "VP Datarom - Strong på-terskel"
+    min: 1.0
+    max: 5.0
+    step: 0.5
+    initial: 3.0
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-plus
+
+  vp_datarom_strong_terskel_av:
+    name: "VP Datarom - Strong av-terskel"
+    min: 0.5
+    max: 4.0
+    step: 0.5
+    initial: 2.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-minus
+
+  # NYE: Gang lys brightness
+  gang_lys_dag_brightness:
+    name: "Gang lys - Dag brightness"
+    min: 50
+    max: 255
+    step: 1
+    initial: 254
+    mode: slider
+    icon: mdi:brightness-7
+
+  gang_lys_natt_brightness:
+    name: "Gang lys - Natt brightness"
+    min: 1
+    max: 50
+    step: 1
+    initial: 8
+    mode: slider
+    icon: mdi:brightness-4
+
+# ===================================================================
+# REST-SENSOR og resten av konfigurasjonen (som før)
+# ===================================================================
+sensor:
+  # ... (resten av sensor-konfigurasjonen din)
+
+utility_meter:
+  # ... (resten av utility_meter-konfigurasjonen din)
+
+template:
+  # ... (resten av template-konfigurasjonen din)
