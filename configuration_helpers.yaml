@@ -1,0 +1,166 @@
+# ===================================================================
+# HOME ASSISTANT HJELPERE (HELPERS)
+# Versjon: 2.0
+# ===================================================================
+# Disse hjelperne brukes av de forbedrede automatiseringene.
+# Legg til i configuration.yaml med: input_number: !include configuration_helpers.yaml
+# Eller opprett dem via UI: Innstillinger > Enheter og tjenester > Hjelpere
+# ===================================================================
+
+# ===================================================================
+# PEAK-KONTROLL TERSKLER
+# ===================================================================
+input_number:
+  # Terskel for når enheter skal kuttes (standard: 4.7 kWh)
+  peak_kontroll_av_grense:
+    name: "Peak-kontroll - Avslåingsgrense"
+    min: 3.0
+    max: 10.0
+    step: 0.1
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-alert
+
+  # Terskel for når enheter kan skrus på igjen (standard: 3.8 kWh)
+  peak_kontroll_paa_grense:
+    name: "Peak-kontroll - Påslåingsgrense"
+    min: 2.0
+    max: 8.0
+    step: 0.1
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:flash-outline
+
+# ===================================================================
+# BILLADER TEMPERATURSIKKERHET
+# ===================================================================
+  # Maksimal temperatur før nødstopp (standard: 75°C)
+  billader_maks_temperatur:
+    name: "Billader - Maks temperatur"
+    min: 60
+    max: 85
+    step: 1
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-alert
+
+  # Trygg temperatur for gjenoppstart (standard: 60°C)
+  billader_trygg_temperatur:
+    name: "Billader - Trygg temperatur"
+    min: 40
+    max: 70
+    step: 1
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-check
+
+# ===================================================================
+# KINO-SYSTEM
+# ===================================================================
+  # Standard volumnivå for receiver (standard: 0.575 = 57.5%)
+  kino_standard_volum:
+    name: "Kino - Standard volum"
+    min: 0.0
+    max: 1.0
+    step: 0.025
+    mode: slider
+    icon: mdi:volume-high
+
+# ===================================================================
+# VARMEPUMPE DATAROM - FAN SPEED KONTROLL
+# ===================================================================
+  # Temperaturavvik for å aktivere strong fan (standard: 3.0°C)
+  vp_datarom_strong_terskel_paa:
+    name: "VP Datarom - Strong på-terskel"
+    min: 1.0
+    max: 5.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-plus
+
+  # Temperaturavvik for å deaktivere strong fan (standard: 2.5°C)
+  vp_datarom_strong_terskel_av:
+    name: "VP Datarom - Strong av-terskel"
+    min: 0.5
+    max: 4.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:fan-minus
+
+# ===================================================================
+# GANG LYS - BRIGHTNESS KONTROLL
+# ===================================================================
+  # Lysstyrke på dagen (standard: 254 = maksimum for Zigbee)
+  gang_lys_dag_brightness:
+    name: "Gang lys - Dag brightness"
+    min: 50
+    max: 255
+    step: 1
+    mode: slider
+    icon: mdi:brightness-7
+
+  # Lysstyrke på natten (standard: 8)
+  gang_lys_natt_brightness:
+    name: "Gang lys - Natt brightness"
+    min: 1
+    max: 50
+    step: 1
+    mode: slider
+    icon: mdi:brightness-4
+
+
+# ===================================================================
+# EKSISTERENDE INPUT_BOOLEAN (referanse - må finnes allerede)
+# ===================================================================
+# Disse må eksistere i systemet ditt:
+#
+# input_boolean:
+#   vvb_smart_styring_aktiv:
+#     name: "VVB Smart styring aktiv"
+#     icon: mdi:water-boiler
+#
+#   peak_kontroll_vvb_deaktivert:
+#     name: "Peak-kontroll - VVB deaktivert"
+#     icon: mdi:water-boiler-off
+#
+#   peak_kontroll_billader_deaktivert:
+#     name: "Peak-kontroll - Billader deaktivert"
+#     icon: mdi:ev-station
+#
+#   peak_kontroll_badegulv_deaktivert:
+#     name: "Peak-kontroll - Badegulv deaktivert"
+#     icon: mdi:radiator-disabled
+#
+#   peak_kontroll_vp_stue_deaktivert:
+#     name: "Peak-kontroll - VP Stue deaktivert"
+#     icon: mdi:air-conditioner
+#
+#   peak_kontroll_vp_kontor_deaktivert:
+#     name: "Peak-kontroll - VP Kontor deaktivert"
+#     icon: mdi:air-conditioner
+#
+#   overoppheting_billader_deaktivert:
+#     name: "Overoppheting - Billader deaktivert"
+#     icon: mdi:alert-circle
+#
+#   kino_synkronisering:
+#     name: "Kino - Synkronisering aktiv"
+#     icon: mdi:television
+
+
+# ===================================================================
+# STANDARDVERDIER FOR HJELPERE
+# ===================================================================
+# Sett disse verdiene ved første gangs oppsett:
+#
+# peak_kontroll_av_grense: 4.7
+# peak_kontroll_paa_grense: 3.8
+# billader_maks_temperatur: 75
+# billader_trygg_temperatur: 60
+# kino_standard_volum: 0.575
+# vp_datarom_strong_terskel_paa: 3.0
+# vp_datarom_strong_terskel_av: 2.5
+# gang_lys_dag_brightness: 254
+# gang_lys_natt_brightness: 8
