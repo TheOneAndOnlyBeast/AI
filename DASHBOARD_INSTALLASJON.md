@@ -17,39 +17,15 @@ Et komplett, moderne dashboard som kombinerer:
 
 ## 🚀 Installasjon (2 minutter!)
 
-### METODE 1: Via File Editor (enklest!)
-
-1. **Åpne `dashboard_komplett.yaml` fra dette repoet**
-2. **MARKER ALT** (Ctrl+A / Cmd+A)
-3. **KOPIER** (Ctrl+C / Cmd+C)
-
-4. **Gå til Home Assistant:**
-   - Klikk på de 3 prikkene (øverst til høyre)
-   - Velg **"Rediger dashbord"**
-   - Klikk på de 3 prikkene igjen
-   - Velg **"Raw configuration editor"**
-
-5. **LAGE NYTT VIEW:**
-   ```yaml
-   # Finn "views:" seksjon i din dashboard-config
-   # Legg til et nytt view:
-
-   views:
-     - title: Kapasitetsledd  # <-- NYTT VIEW
-       path: kapasitetsledd
-       icon: mdi:transmission-tower
-       badges: []
-       cards:
-         # LIM INN ALT INNHOLD FRA dashboard_komplett.yaml HER
-   ```
-
-6. **LAGRE** → **FERDIG!**
+⚠️ **VIKTIG: Velg riktig metode basert på hva du vil gjøre!**
 
 ---
 
-### METODE 2: Helt nytt dashboard
+### 📋 METODE 1: Helt nytt dashboard (ANBEFALT!)
 
-Hvis du vil ha dette som et helt eget dashboard (anbefalt for testing):
+**Bruk denne metoden hvis du vil ha et helt nytt, separat dashboard.**
+
+**Fil: `dashboard_komplett.yaml`**
 
 1. **Gå til Innstillinger → Dashboards**
 2. **Klikk "+ LEGG TIL DASHBOARD"**
@@ -58,23 +34,59 @@ Hvis du vil ha dette som et helt eget dashboard (anbefalt for testing):
 5. **Klikk "OPPRETT"**
 
 6. **Åpne det nye dashboardet**
-7. **Klikk de 3 prikkene → "Rediger dashbord"**
-8. **Klikk de 3 prikkene → "Raw configuration editor"**
+7. **Klikk de 3 prikkene (øverst høyre) → "Raw configuration editor"**
+8. **SLETT alt innhold**
+9. **Åpne `dashboard_komplett.yaml` og KOPIER ALT (Ctrl+A → Ctrl+C)**
+10. **LIM INN i Home Assistant (Ctrl+V)**
+11. **Klikk "LAGRE"** → **FERDIG!** 🎉
 
-9. **SLETT alt innhold**
-10. **LIM INN dette:**
+---
 
-```yaml
-views:
-  - title: Hjem
-    path: home
-    icon: mdi:home
-    badges: []
-    cards:
-      # LIM INN ALT INNHOLD FRA dashboard_komplett.yaml HER
-```
+### 📋 METODE 2: Legg til i eksisterende dashboard
 
-11. **LAGRE** → **FERDIG!**
+**Bruk denne metoden hvis du vil legge til som et nytt VIEW i ditt eksisterende dashboard.**
+
+**Fil: `dashboard_view_only.yaml`**
+
+1. **Åpne ditt eksisterende dashboard**
+2. **Klikk de 3 prikkene (øverst høyre) → "Rediger dashbord"**
+3. **Klikk "+ LEGG TIL VIEW" (nederst på siden)**
+4. **Tittel:** `Kapasitetsledd`
+5. **Ikon:** `mdi:transmission-tower`
+6. **Klikk "LAGRE"**
+
+7. **Klikk de 3 prikkene igjen → "Raw configuration editor"**
+8. **Scroll HELT NED til du finner det NYE viewet (ser slik ut):**
+   ```yaml
+   views:
+     - title: Home
+       cards:
+         # ... eksisterende kort
+     - title: Kapasitetsledd  # <-- DITT NYE VIEW
+       icon: mdi:transmission-tower
+       cards: []  # <-- TOM!
+   ```
+
+9. **Åpne `dashboard_view_only.yaml` og KOPIER ALT innhold**
+10. **Erstatt `cards: []` med det du kopierte**
+    - Fjern `[]` og lim inn kortene
+    - Pass på at indenteringen er riktig (samme som i eksempelet under)
+
+11. **Eksempel på riktig struktur:**
+    ```yaml
+    - title: Kapasitetsledd
+      icon: mdi:transmission-tower
+      cards:
+        - type: markdown  # <-- FØRSTE KORT
+          content: |
+            # ⚡ Smart Kapasitetsledd-system
+            ...
+        - type: horizontal-stack  # <-- ANDRE KORT
+          cards:
+            ...
+    ```
+
+12. **Klikk "LAGRE"** → **FERDIG!** 🎉
 
 ---
 
