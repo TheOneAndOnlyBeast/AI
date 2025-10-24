@@ -18,18 +18,81 @@ scene: !include scenes.yaml
 # ===================================================================
 # INPUT_BOOLEAN
 # ===================================================================
-# MERK: De fleste input_boolean er opprettet via UI og skal IKKE defineres her.
-# Kun nye helpers som ikke finnes fra før legges inn her.
-# ===================================================================
-# input_boolean:
+input_boolean:
+  # VVB
+  vvb_smart_styring_aktiv:
+    name: "VVB Smart Styring Aktiv"
+    initial: true
+    icon: mdi:water-boiler-auto
+
+  # Peak-kontroll flags
+  peak_kontroll_vvb_deaktivert:
+    name: "Peak-kontroll - VVB deaktivert"
+    icon: mdi:water-boiler-off
+    initial: false
+
+  peak_kontroll_billader_deaktivert:
+    name: "Peak-kontroll - Billader deaktivert"
+    icon: mdi:ev-station
+    initial: false
+
+  overoppheting_billader_deaktivert:
+    name: "Overoppheting - Billader deaktivert"
+    icon: mdi:alert-circle
+    initial: false
+
+  peak_kontroll_badegulv_deaktivert:
+    name: "Peak-kontroll - Badegulv deaktivert"
+    icon: mdi:radiator-disabled
+    initial: false
+
+  peak_kontroll_vp_stue_deaktivert:
+    name: "Peak-kontroll - VP Stue deaktivert"
+    icon: mdi:air-conditioner
+    initial: false
+
+  peak_kontroll_vp_kontor_deaktivert:
+    name: "Peak-kontroll - VP Kontor deaktivert"
+    icon: mdi:air-conditioner
+    initial: false
+
+  kino_synkronisering:
+    name: "Kino - Synkronisering aktiv"
+    icon: mdi:television
+    initial: true
 
 # ===================================================================
 # INPUT_NUMBER
 # ===================================================================
-# MERK: peak_1/2/3_verdi er opprettet via UI og skal IKKE defineres her.
-# Kun NYE kapasitetsledd-helpers legges inn.
-# ===================================================================
 input_number:
+  # Effektledd tracking (eksisterende)
+  peak_1_verdi:
+    name: "Effektledd - Peak #1 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
+  peak_2_verdi:
+    name: "Effektledd - Peak #2 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
+  peak_3_verdi:
+    name: "Effektledd - Peak #3 verdi"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:gauge
+
   # NYE: Kapasitetsledd-system
   kapasitetsledd_maal:
     name: "Kapasitetsledd - Målgrense"
@@ -64,16 +127,31 @@ input_number:
 # ===================================================================
 # INPUT_TEXT
 # ===================================================================
-# MERK: peak_1/2/3_tidspunkt er opprettet via UI og skal IKKE defineres her.
-# ===================================================================
-# input_text:
+input_text:
+  peak_1_tidspunkt:
+    name: "Effektledd - Peak #1 tidspunkt"
+    initial: "Ingen data"
+    icon: mdi:clock-outline
+
+  peak_2_tidspunkt:
+    name: "Effektledd - Peak #2 tidspunkt"
+    initial: "Ingen data"
+    icon: mdi:clock-outline
+
+  peak_3_tidspunkt:
+    name: "Effektledd - Peak #3 tidspunkt"
+    initial: "Ingen data"
+    icon: mdi:clock-outline
 
 # ===================================================================
 # INPUT_DATETIME
 # ===================================================================
-# MERK: robot_siste_kjoring er opprettet via UI og skal IKKE defineres her.
-# ===================================================================
-# input_datetime:
+input_datetime:
+  robot_siste_kjoring:
+    name: "Robotstøvsuger - Siste kjøring"
+    has_date: true
+    has_time: true
+    icon: mdi:robot-vacuum
 
 # ===================================================================
 # REST-SENSOR: Maren tømmekalender (skrudd av pga nede)
