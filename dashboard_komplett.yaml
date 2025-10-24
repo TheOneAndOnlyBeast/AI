@@ -28,14 +28,14 @@ views:
           # ⚡ Smart Kapasitetsledd-system
           **Automatisk styring basert på ekte norsk kapasitetsledd-formel**
 
-          <div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; font-size: 14px;">
+          <div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; font-size: 15px; font-weight: 500;">
             {% set anbefaling = states('sensor.kapasitetsledd_kutt_anbefaling') %}
             {% if anbefaling == 'KUTT NÅ!' %}
-              🚨 <span style="font-weight: bold; font-size: 16px;">KUTT NÅ!</span> - Laster kuttes for å holde kapasitetsledd under mål
+              🚨 KUTT NÅ! - Laster kuttes for å holde kapasitetsledd under mål
             {% elif anbefaling == 'VARSLING' %}
-              ⚠️ <span style="font-weight: bold; font-size: 16px;">VARSLING</span> - Prognose nærmer seg trygg grense
+              ⚠️ VARSLING - Prognose nærmer seg trygg grense
             {% else %}
-              ✅ <span style="font-weight: bold; font-size: 16px;">TRYGT</span> - Forbruket er innenfor trygg grense
+              ✅ TRYGT - Forbruket er innenfor trygg grense
             {% endif %}
           </div>
         card_mod:

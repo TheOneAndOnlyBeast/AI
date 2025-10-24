@@ -24,14 +24,14 @@
           # ⚡ Smart Kapasitetsledd-system
           **Automatisk styring basert på ekte norsk kapasitetsledd-formel**
 
-          <div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; font-size: 14px;">
+          <div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; font-size: 15px; font-weight: 500;">
             {% set anbefaling = states('sensor.kapasitetsledd_kutt_anbefaling') %}
             {% if anbefaling == 'KUTT NÅ!' %}
-              🚨 <b>KUTT NÅ!</b> - Laster kuttes for å holde kapasitetsledd under mål
+              🚨 KUTT NÅ! - Laster kuttes for å holde kapasitetsledd under mål
             {% elif anbefaling == 'VARSLING' %}
-              ⚠️ <b>VARSLING</b> - Prognose nærmer seg trygg grense
+              ⚠️ VARSLING - Prognose nærmer seg trygg grense
             {% else %}
-              ✅ <b>TRYGT</b> - Forbruket er innenfor trygg grense
+              ✅ TRYGT - Forbruket er innenfor trygg grense
             {% endif %}
           </div>
 
