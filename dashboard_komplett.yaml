@@ -31,11 +31,11 @@ views:
           <div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; font-size: 14px;">
             {% set anbefaling = states('sensor.kapasitetsledd_kutt_anbefaling') %}
             {% if anbefaling == 'KUTT NÅ!' %}
-              🚨 <b>KUTT NÅ!</b> - Laster kuttes for å holde kapasitetsledd under mål
+              🚨 <span style="font-weight: bold; font-size: 16px;">KUTT NÅ!</span> - Laster kuttes for å holde kapasitetsledd under mål
             {% elif anbefaling == 'VARSLING' %}
-              ⚠️ <b>VARSLING</b> - Prognose nærmer seg trygg grense
+              ⚠️ <span style="font-weight: bold; font-size: 16px;">VARSLING</span> - Prognose nærmer seg trygg grense
             {% else %}
-              ✅ <b>TRYGT</b> - Forbruket er innenfor trygg grense
+              ✅ <span style="font-weight: bold; font-size: 16px;">TRYGT</span> - Forbruket er innenfor trygg grense
             {% endif %}
           </div>
         card_mod:
