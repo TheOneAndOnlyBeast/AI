@@ -1,12 +1,13 @@
 # ===================================================================
-# SMART KAPASITETSLEDD-SYSTEM FOR NORGE
-# Holder deg under 5 kW (konfigurerbart) med riktig formel
+# HOME ASSISTANT AUTOMATIONS
+# Komplett fil med kapasitetsledd-system v3.0
 # ===================================================================
-# Versjon: 3.0 - KAPASITETSLEDD-OPTIMALISERT
+# Holder deg under 5 kW kapasitetsledd med riktig norsk formel:
+# Kapasitetsledd = (Peak #1 + Peak #2 + Peak #3) / 3
 # ===================================================================
 
 # ===================================================================
-# KAPASITETSLEDD: SMART PEAK-KONTROLL
+# KAPASITETSLEDD: SMART PEAK-KONTROLL (NY!)
 # ===================================================================
 - id: kapasitetsledd_smart_peak_kontroll
   alias: "Kapasitetsledd - Smart peak-kontroll"
@@ -217,7 +218,7 @@
 
 
 # ===================================================================
-# KAPASITETSLEDD: NORMALISERING (GJENOPPRETT)
+# KAPASITETSLEDD: NORMALISERING (NY!)
 # ===================================================================
 - id: kapasitetsledd_normalisering
   alias: "Kapasitetsledd - Normalisering"
@@ -349,7 +350,96 @@
 
 
 # ===================================================================
-# EFFEKTLEDD: OPPDATER TOPP-3 TIMER (UENDRET LOGIKK)
+# SYSTEM OPPSTART - NORMALISERING
+# ===================================================================
+- id: system_oppstart_normaliser
+  alias: "System-oppstart - Normaliser enheter"
+  description: "Gjenoppretter enheter ved oppstart hvis trygt."
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay: "00:01:00"
+    - condition: state
+      entity_id: sensor.kapasitetsledd_kutt_anbefaling
+      state: "TRYGT"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.vp_datarom
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.daikinap54875_room_temperature
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
+          state: "on"
+      then:
+        - service: climate.turn_on
+          target:
+            entity_id: climate.floor_thermostat
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: and
+          conditions:
+            - condition: state
+              entity_id: input_boolean.peak_kontroll_billader_deaktivert
+              state: "on"
+            - condition: state
+              entity_id: input_boolean.overoppheting_billader_deaktivert
+              state: "off"
+      then:
+        - service: switch.turn_on
+          target:
+            entity_id: switch.shellyplus1pm_a8032ab13280
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_billader_deaktivert
+    - delay: "00:00:10"
+
+    - if:
+        - condition: state
+          entity_id: input_boolean.peak_kontroll_vvb_deaktivert
+          state: "on"
+      then:
+        - service: switch.turn_on
+          target:
+            entity_id: switch.heavy_duty_switch
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.vvb_smart_styring_aktiv
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.peak_kontroll_vvb_deaktivert
+
+
+# ===================================================================
+# EFFEKTLEDD: OPPDATER TOPP-3
 # ===================================================================
 - id: effektledd_oppdater_topper
   alias: "Effektledd - Oppdater topp-3"
@@ -501,96 +591,7 @@
 
 
 # ===================================================================
-# SYSTEM OPPSTART - NORMALISERING
-# ===================================================================
-- id: system_oppstart_normaliser
-  alias: "System-oppstart - Normaliser enheter"
-  description: "Gjenoppretter enheter ved oppstart hvis trygt."
-  mode: single
-  trigger:
-    - platform: homeassistant
-      event: start
-  action:
-    - delay: "00:01:00"
-    - condition: state
-      entity_id: sensor.kapasitetsledd_kutt_anbefaling
-      state: "TRYGT"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.vp_datarom
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vp_kontor_deaktivert
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.daikinap54875_room_temperature
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vp_stue_deaktivert
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
-          state: "on"
-      then:
-        - service: climate.turn_on
-          target:
-            entity_id: climate.floor_thermostat
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_badegulv_deaktivert
-    - delay: "00:00:10"
-
-    - if:
-        - condition: and
-          conditions:
-            - condition: state
-              entity_id: input_boolean.peak_kontroll_billader_deaktivert
-              state: "on"
-            - condition: state
-              entity_id: input_boolean.overoppheting_billader_deaktivert
-              state: "off"
-      then:
-        - service: switch.turn_on
-          target:
-            entity_id: switch.shellyplus1pm_a8032ab13280
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_billader_deaktivert
-    - delay: "00:00:10"
-
-    - if:
-        - condition: state
-          entity_id: input_boolean.peak_kontroll_vvb_deaktivert
-          state: "on"
-      then:
-        - service: switch.turn_on
-          target:
-            entity_id: switch.heavy_duty_switch
-        - service: input_boolean.turn_on
-          target:
-            entity_id: input_boolean.vvb_smart_styring_aktiv
-        - service: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.peak_kontroll_vvb_deaktivert
-
-
-# ===================================================================
-# DINE ANDRE EKSISTERENDE AUTOMASJONER (UENDRET)
+# SIKKERHET: OVEROPPHETING BILLADER
 # ===================================================================
 - id: sikkerhet_overoppheting_av_billader
   alias: "Overopphetingsvern - Skru AV Billader"
@@ -650,6 +651,10 @@
           {{ states('sensor.shellyplus1pm_a8032ab13280_temperature') }}°C (< 60°C).
           Ladingen er gjenopptatt.
 
+
+# ===================================================================
+# ROBOTSTØVSUGERE
+# ===================================================================
 - id: manuell_start_stovsugere_nar_borte
   alias: "Start robotstøvsugere når jeg er borte"
   description: "Starter støvsugere når jeg er borte, maks én gang per 48 timer."
@@ -698,6 +703,10 @@
       data:
         datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
+
+# ===================================================================
+# KINO-SYNKRONISERING
+# ===================================================================
 - id: kino_synk_alle_pa
   alias: "Kino: En på = alle på"
   description: "Slår på alle kino-enheter når én slås på."
@@ -778,6 +787,10 @@
           - media_player.rx_v685_3c03b4
   mode: single
 
+
+# ===================================================================
+# VARMEPUMPE DATAROM
+# ===================================================================
 - id: varmepumpe_datarom_dynamisk_fan_speed
   alias: "Varmepumpe Datarom - Dynamisk fan speed"
   description: "Justerer viftehastighet basert på temperaturavvik."
@@ -866,6 +879,10 @@
           data:
             hvac_mode: 'cool'
 
+
+# ===================================================================
+# GANG LYS
+# ===================================================================
 - id: gang_lys_smart_justering
   alias: "Gang lys - Smart justering"
   description: "Justerer lys basert på tid - maks lysstyrke dag, rødt natt."
