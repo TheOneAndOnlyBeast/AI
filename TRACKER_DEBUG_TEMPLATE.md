@@ -1,200 +1,166 @@
-# 📍 TRACKER DEBUG - TEMPLATES
+# 🔍 TRACKER DEBUG - Finn aktive/inaktive trackere
 
-## 🎯 Testing i Developer Tools
-
-Gå til: **Developer Tools → Template** og lim inn følgende:
+Bruk denne template i **Developer Tools → Template** for å se hvilke trackere som faktisk fungerer akkurat nå.
 
 ---
 
-### Template 1: Enkel oversikt (alle trackere)
+## 🎯 Enkel oversikt (kopier denne!)
 
 ```jinja2
-{% for entity in states.device_tracker %}
-{{ entity.entity_id }}:
-  Status: {{ entity.state }}
-  Sist endret: {{ relative_time(entity.last_changed) }} siden
-  Sist oppdatert: {{ relative_time(entity.last_updated) }} siden
-
-{% endfor %}
-
-{% for entity in states.person %}
-{{ entity.entity_id }}:
-  Status: {{ entity.state }}
-  Sist endret: {{ relative_time(entity.last_changed) }} siden
-  Sist oppdatert: {{ relative_time(entity.last_updated) }} siden
-
-{% endfor %}
-```
-
----
-
-### Template 2: Hvilke trackere fungerer? (med vurdering)
-
-```jinja2
-🔍 TRACKER ANALYSE
+🔍 TRACKER ANALYSE - {{ now().strftime('%H:%M:%S') }}
 ==================
 
 {% set ns = namespace(working=[], broken=[]) %}
 
-{# Sjekk device_trackers #}
+{# Sjekk alle device_trackers #}
 {% for entity in states.device_tracker %}
-  {% set minutes_since_update = (now() - entity.last_updated).total_seconds() / 60 %}
-  {% if minutes_since_update < 60 %}
-    {% set ns.working = ns.working + [entity.entity_id] %}
+  {% set minutes = (now() - entity.last_updated).total_seconds() / 60 %}
+  {% if minutes < 60 %}
+    {% set ns.working = ns.working + [entity] %}
   {% else %}
-    {% set ns.broken = ns.broken + [entity.entity_id] %}
+    {% set ns.broken = ns.broken + [entity] %}
   {% endif %}
 {% endfor %}
 
-{# Sjekk person entities #}
+{# Sjekk alle person entities #}
 {% for entity in states.person %}
-  {% set minutes_since_update = (now() - entity.last_updated).total_seconds() / 60 %}
-  {% if minutes_since_update < 60 %}
-    {% set ns.working = ns.working + [entity.entity_id] %}
+  {% set minutes = (now() - entity.last_updated).total_seconds() / 60 %}
+  {% if minutes < 60 %}
+    {% set ns.working = ns.working + [entity] %}
   {% else %}
-    {% set ns.broken = ns.broken + [entity.entity_id] %}
+    {% set ns.broken = ns.broken + [entity] %}
   {% endif %}
 {% endfor %}
 
-✅ FUNGERENDE TRACKERE ({{ ns.working | length }}):
-{% for tracker in ns.working %}
-  - {{ tracker }} ({{ states(tracker) }})
-    Oppdatert: {{ relative_time(states[tracker.split('.')[0]][tracker.split('.')[1]].last_updated) }} siden
-{% endfor %}
+✅ AKTIVE TRACKERE ({{ ns.working | length }}):
+{% if ns.working | length == 0 %}
+  (ingen)
+{% else %}
+{% for entity in ns.working %}
+  📍 {{ entity.entity_id }}
+     Navn: {{ entity.name }}
+     Status: {{ entity.state | upper }}
+     Oppdatert: {{ relative_time(entity.last_updated) }} siden
+     Endret: {{ relative_time(entity.last_changed) }} siden
 
-❌ IKKE-FUNGERENDE TRACKERE ({{ ns.broken | length }}):
-{% for tracker in ns.broken %}
-  - {{ tracker }} ({{ states(tracker) }})
-    Sist oppdatert: {{ relative_time(states[tracker.split('.')[0]][tracker.split('.')[1]].last_updated) }} siden
 {% endfor %}
+{% endif %}
+
+❌ INAKTIVE TRACKERE ({{ ns.broken | length }}):
+{% if ns.broken | length == 0 %}
+  (ingen)
+{% else %}
+{% for entity in ns.broken %}
+  📍 {{ entity.entity_id }}
+     Navn: {{ entity.name }}
+     Status: {{ entity.state | upper }}
+     Oppdatert: {{ relative_time(entity.last_updated) }} siden
+     Endret: {{ relative_time(entity.last_changed) }} siden
+
+{% endfor %}
+{% endif %}
 
 💡 ANBEFALING:
 {% if ns.working | length == 0 %}
-  ⚠️ INGEN trackere fungerer! Du må sette opp Companion App.
+  ⚠️ INGEN trackere er aktive! Sett opp Companion App med GPS.
 {% elif ns.working | length == 1 %}
-  ✅ Bruk {{ ns.working[0] }} - denne er pålitelig!
+  ✅ Bruk {{ ns.working[0].entity_id }} - denne er aktiv!
 {% else %}
-  ✅ Du har {{ ns.working | length }} fungerende trackere
-  🎯 Anbefalt: Bruk den som baserer seg på GPS (Companion App)
+  ✅ Du har {{ ns.working | length }} aktive trackere.
+  🎯 Med VPN: Bruk GPS-basert tracker (Companion App)!
 {% endif %}
+
+---
+
+FORKLARING:
+• AKTIV = Oppdatert siste timen
+• INAKTIV = Ikke oppdatert på > 1 time
+• "Oppdatert" = Sist Home Assistant mottok data
+• "Endret" = Sist status endret seg (home ↔ not_home)
+
+⚠️ MED VPN:
+Ping/router-baserte trackere kan vise "aktiv" men være stuck på "home"!
+Test ved å gå ut av huset og sjekk om status endrer seg til "not_home".
 ```
 
 ---
 
-### Template 3: Live monitoring (oppdateres hver sekund)
+## 🚀 Hvordan bruke:
 
-```jinja2
-📊 LIVE TRACKER STATUS
-{{ now().strftime('%H:%M:%S') }}
+1. **Åpne Home Assistant**
+2. Gå til: **Innstillinger → Developer Tools → Template**
+3. **Kopier hele template** over (fra ``` til ```)
+4. **Lim inn** i template editoren
+5. Se resultatet med én gang!
+
+---
+
+## 🧪 Testing med VPN:
+
+**For å finne ut hvilke trackere som FAKTISK fungerer med VPN:**
+
+1. **Kjør template nå** (mens hjemme) - noter alle "AKTIVE"
+2. **Gå ut av huset** med mobilen
+3. **Vent 5 minutter**
+4. **Kjør template igjen** (via mobil/annen enhet)
+5. **Sjekk hvilke som endret status** til "not_home"
+
+**Forventet med VPN:**
+- ❌ Ping-trackere: Status "home" (selv når borte) = VIRKER IKKE
+- ❌ Router-trackere: Status "home"/"unavailable" = VIRKER IKKE
+- ✅ GPS-trackere (Companion App): Status "not_home" = VIRKER! 🎯
+
+---
+
+## 📊 Eksempel output:
+
+```
+🔍 TRACKER ANALYSE - 14:32:15
 ==================
 
-{% for entity in states.device_tracker %}
-{{ entity.name }}:
-  🏷️  {{ entity.entity_id }}
-  📍 {{ entity.state | upper }}
-  ⏱️  Oppdatert for {{ ((now() - entity.last_updated).total_seconds() / 60) | round(0) }} min siden
-  🔄 Endret for {{ ((now() - entity.last_changed).total_seconds() / 60) | round(0) }} min siden
-  {% if (now() - entity.last_updated).total_seconds() / 60 < 60 %}✅ AKTIV{% else %}❌ INAKTIV{% endif %}
+✅ AKTIVE TRACKERE (2):
+  📍 person.erik_narum
+     Navn: Erik Narum
+     Status: HOME
+     Oppdatert: 2 minutter siden
+     Endret: 3 timer siden
 
-{% endfor %}
+  📍 device_tracker.iphone_erik
+     Navn: iPhone (Erik)
+     Status: HOME
+     Oppdatert: 1 minutt siden
+     Endret: 3 timer siden
 
-{% for entity in states.person %}
-{{ entity.name }}:
-  🏷️  {{ entity.entity_id }}
-  📍 {{ entity.state | upper }}
-  ⏱️  Oppdatert for {{ ((now() - entity.last_updated).total_seconds() / 60) | round(0) }} min siden
-  🔄 Endret for {{ ((now() - entity.last_changed).total_seconds() / 60) | round(0) }} min siden
-  {% if (now() - entity.last_updated).total_seconds() / 60 < 60 %}✅ AKTIV{% else %}❌ INAKTIV{% endif %}
+❌ INAKTIVE TRACKERE (1):
+  📍 device_tracker.ping_iphone
+     Navn: iPhone Ping
+     Status: HOME
+     Oppdatert: 2 dager siden
+     Endret: 5 dager siden
 
-{% endfor %}
+💡 ANBEFALING:
+  ✅ Du har 2 aktive trackere.
+  🎯 Med VPN: Bruk GPS-basert tracker (Companion App)!
 ```
 
 ---
 
-### Template 4: Spesifikk tracker (erstatt ENTITY_ID)
+## 🎯 Hva gjør jeg med resultatet?
 
-```jinja2
-{% set tracker = 'device_tracker.iphone_17pro' %}
+### Hvis du har GPS-basert tracker (Companion App):
+✅ **Bruk `person.erik_narum`** i automations
+✅ Person entity vil automatisk bruke beste tracker (GPS)
 
-📱 {{ states[tracker.split('.')[0]][tracker.split('.')[1]].name }}
-==================
+### Hvis ingen aktive trackere:
+❌ **Installer Companion App** på mobilen
+❌ **Aktiver GPS** med "Alltid"-tillatelse
+❌ **Legg til tracker** i Person entity
 
-Entity ID: {{ tracker }}
-Status: {{ states(tracker) | upper }}
-
-⏱️  Tidslinje:
-  - Last Updated: {{ states[tracker.split('.')[0]][tracker.split('.')[1]].last_updated.strftime('%Y-%m-%d %H:%M:%S') }}
-    ({{ relative_time(states[tracker.split('.')[0]][tracker.split('.')[1]].last_updated) }} siden)
-
-  - Last Changed: {{ states[tracker.split('.')[0]][tracker.split('.')[1]].last_changed.strftime('%Y-%m-%d %H:%M:%S') }}
-    ({{ relative_time(states[tracker.split('.')[0]][tracker.split('.')[1]].last_changed) }} siden)
-
-📊 Attributter:
-{% for attr, value in state_attr(tracker, '') | dictsort %}
-  - {{ attr }}: {{ value }}
-{% endfor %}
-
-💡 Vurdering:
-{% set minutes_since = (now() - states[tracker.split('.')[0]][tracker.split('.')[1]].last_updated).total_seconds() / 60 %}
-{% if minutes_since < 5 %}
-  ✅ Veldig pålitelig (oppdatert for {{ minutes_since | round(0) }} min siden)
-{% elif minutes_since < 60 %}
-  ✅ Pålitelig (oppdatert for {{ minutes_since | round(0) }} min siden)
-{% elif minutes_since < 1440 %}
-  ⚠️  Kanskje upålitelig (oppdatert for {{ (minutes_since / 60) | round(1) }} timer siden)
-{% else %}
-  ❌ Ikke pålitelig (oppdatert for {{ (minutes_since / 1440) | round(1) }} dager siden)
-{% endif %}
-```
+### Hvis trackere viser "aktiv" men er stuck på "home":
+⚠️ **Det er VPN-problem!**
+⚠️ **Test ved å gå ut** og se om status endrer seg
+⚠️ **Erstatt med GPS-tracker** (eneste som fungerer med VPN)
 
 ---
 
-## 🔧 Hvordan bruke dette:
-
-### Steg 1: Test i Developer Tools
-1. Åpne Home Assistant
-2. Gå til **Innstillinger → Developer Tools → Template**
-3. Lim inn én av templates over
-4. Se resultatene live!
-
-### Steg 2: Legg til dashboard
-1. Kopier innholdet fra `dashboard_tracker_debug.yaml`
-2. Gå til ditt dashboard → **Edit Dashboard**
-3. **Add Card → Manual** (nederst)
-4. Lim inn innholdet
-5. **Save**
-
-### Steg 3: Bruk den nye sensoren
-- **Entity ID**: `sensor.tracker_status_oversikt`
-- **Attributter**: `trackere` (liste med alle trackere og status)
-- Kan brukes i automations, conditions, etc.
-
----
-
-## 📱 Test med VPN:
-
-1. Gå ut av huset (med mobilen)
-2. Vent 5 minutter
-3. Åpne Developer Tools → Template
-4. Kjør Template 2 ("Hvilke trackere fungerer?")
-5. Se hvilke trackere som faktisk viser "not_home" vs "home"
-
-**Forventet resultat med VPN:**
-- ❌ Ping-baserte trackere: Vil vise "home" (fordi VPN-tunnel)
-- ❌ Router-baserte trackere: Vil vise "home" eller "unavailable"
-- ✅ GPS-baserte trackere (Companion App): Vil vise "not_home" ✅
-
----
-
-## 🎯 Hva skal du se etter:
-
-| Tracker Type | Status når borte | Fungerer med VPN? |
-|--------------|------------------|-------------------|
-| Ping (nmap, etc) | home ❌ | Nei |
-| Router (UniFi, etc) | home/unavailable ❌ | Nei |
-| IP-basert | home ❌ | Nei |
-| Wi-Fi SSID | upålitelig ⚠️ | Nei |
-| GPS (Companion App) | not_home ✅ | **JA!** |
-| Bluetooth beacon | varierer | Ja (hvis hjemme) |
-
-**Konklusjon**: Med always-on VPN MÅ du bruke GPS (Companion App)! 🎯
+**Dette er kun for debugging - ingen permanent sensor/dashboard! 🔍**

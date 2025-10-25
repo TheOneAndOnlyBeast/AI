@@ -410,50 +410,6 @@ template:
               Prognose {{ prognose }} kWh er under trygg grense {{ trygg }} kWh
             {% endif %}
 
-      # ===================================================================
-      # TRACKER STATUS OVERSIKT (debugging presence detection)
-      # ===================================================================
-      - name: "Tracker Status Oversikt"
-        unique_id: tracker_status_oversikt
-        icon: mdi:map-marker-account
-        state: >
-          {% set ns = namespace(trackers=[]) %}
-          {% for entity in states.device_tracker %}
-            {% set ns.trackers = ns.trackers + [entity.entity_id] %}
-          {% endfor %}
-          {% for entity in states.person %}
-            {% set ns.trackers = ns.trackers + [entity.entity_id] %}
-          {% endfor %}
-          {{ ns.trackers | length }} trackere funnet
-        attributes:
-          trackere: >
-            {% set ns = namespace(trackers=[]) %}
-            {% for entity in states.device_tracker %}
-              {% set last_changed = (now() - entity.last_changed).total_seconds() / 60 %}
-              {% set last_updated = (now() - entity.last_updated).total_seconds() / 60 %}
-              {% set ns.trackers = ns.trackers + [{
-                'entity_id': entity.entity_id,
-                'navn': entity.name,
-                'status': entity.state,
-                'sist_endret_minutter': last_changed | round(0),
-                'sist_oppdatert_minutter': last_updated | round(0),
-                'fungerer': 'JA' if last_updated < 60 else 'NEI (ingen oppdatering på ' ~ (last_updated | round(0)) ~ ' min)'
-              }] %}
-            {% endfor %}
-            {% for entity in states.person %}
-              {% set last_changed = (now() - entity.last_changed).total_seconds() / 60 %}
-              {% set last_updated = (now() - entity.last_updated).total_seconds() / 60 %}
-              {% set ns.trackers = ns.trackers + [{
-                'entity_id': entity.entity_id,
-                'navn': entity.name,
-                'status': entity.state,
-                'sist_endret_minutter': last_changed | round(0),
-                'sist_oppdatert_minutter': last_updated | round(0),
-                'fungerer': 'JA' if last_updated < 60 else 'NEI (ingen oppdatering på ' ~ (last_updated | round(0)) ~ ' min)'
-              }] %}
-            {% endfor %}
-            {{ ns.trackers }}
-
   # ===================================================================
   # BINARY SENSOR
   # ===================================================================
