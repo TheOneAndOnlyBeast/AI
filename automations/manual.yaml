@@ -655,25 +655,44 @@
 # ===================================================================
 # ROBOTSTØVSUGERE
 # ===================================================================
-- id: manuell_start_stovsugere_nar_borte
-  alias: "Start robotstøvsugere når jeg er borte"
-  description: "Starter støvsugere når jeg er borte, maks én gang per 48 timer."
+- id: smart_start_stovsugere_nar_borte
+  alias: "SMART: Start robotstøvsugere når på jobb"
+  description: "Starter støvsugere når sannsynligvis på jobb (borte 2+ timer, hverdag 09-16, maks 1x/dag)."
   mode: single
   trigger:
     - platform: state
       entity_id: person.erik_narum
       from: home
       to: not_home
-      for: "00:10:00"
+      for: "02:00:00"  # Borte i 2 timer = jobb, ikke handle
   condition:
+    # Kun på hverdager (mandag-fredag)
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+
+    # Kun mellom 09:00-16:00 (arbeidstid)
+    - condition: time
+      after: "09:00:00"
+      before: "16:00:00"
+
+    # Ikke kjør hvis allerede kjørt i dag
     - condition: template
       value_template: >-
         {% set last_run = states('input_datetime.robot_siste_kjoring') %}
         {% if last_run in ['unknown', 'unavailable'] %}
           true
         {% else %}
-          {{ (now() - (last_run | as_datetime | as_local)).total_seconds() > 172800 }}
+          {% set last_run_date = (last_run | as_datetime | as_local).date() %}
+          {% set today = now().date() %}
+          {{ last_run_date < today }}
         {% endif %}
+
+    # Støvsugere må være tilgjengelige
     - condition: template
       value_template: >
         {{ states('vacuum.roborock_s7_maxv') not in ['unavailable', 'unknown'] and
