@@ -1,0 +1,136 @@
+# ===================================================================
+# TRACKER STATUS KORT - Se at GPS tracking fungerer
+# Kopier dette kortet til dashboardet ditt
+# ===================================================================
+
+type: vertical-stack
+cards:
+  # Header
+  - type: markdown
+    content: |
+      # 📍 Presence Tracking Status
+
+      <div style="text-align: center; padding: 10px; background: {% if is_state('person.erik_narum', 'home') %}linear-gradient(135deg, #4CAF50 0%, #45a049 100%){% else %}linear-gradient(135deg, #FF9800 0%, #F57C00 100%){% endif %}; border-radius: 12px; color: white; font-size: 18px; font-weight: 600; margin: 10px 0;">
+        {% if is_state('person.erik_narum', 'home') %}
+          🏠 HJEMME
+        {% else %}
+          🚗 BORTE
+        {% endif %}
+      </div>
+
+  # Person entity
+  - type: markdown
+    content: |
+      ## 👤 Person: Erik Narum
+
+      <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; border-left: 4px solid {% if is_state('person.erik_narum', 'home') %}#4CAF50{% else %}#FF9800{% endif %};">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <strong>Status:</strong><br>
+            {% if is_state('person.erik_narum', 'home') %}
+              🏠 <span style="color: #4CAF50; font-weight: bold;">HJEMME</span>
+            {% else %}
+              🚗 <span style="color: #FF9800; font-weight: bold;">BORTE</span>
+            {% endif %}
+          </div>
+          <div>
+            <strong>Bruker tracker:</strong><br>
+            <code style="font-size: 11px;">{{ state_attr('person.erik_narum', 'source') }}</code>
+          </div>
+          <div>
+            <strong>GPS:</strong><br>
+            {% set lat = state_attr('person.erik_narum', 'latitude') %}
+            {% set lon = state_attr('person.erik_narum', 'longitude') %}
+            {% if lat and lon %}
+              ✅ {{ lat | round(4) }}, {{ lon | round(4) }}
+            {% else %}
+              ❌ Ingen GPS
+            {% endif %}
+          </div>
+          <div>
+            <strong>Oppdatert:</strong><br>
+            {{ relative_time(states.person.erik_narum.last_updated) }} siden
+          </div>
+        </div>
+      </div>
+
+  # GPS Tracker (iphone_17pro)
+  - type: markdown
+    content: |
+      ## 📱 GPS Tracker: iPhone
+
+      <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; border-left: 4px solid {% if is_state('device_tracker.iphone_17pro', 'home') %}#4CAF50{% else %}#FF9800{% endif %};">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <strong>Status:</strong><br>
+            {% if is_state('device_tracker.iphone_17pro', 'home') %}
+              🏠 <span style="color: #4CAF50; font-weight: bold;">HJEMME</span>
+            {% else %}
+              🚗 <span style="color: #FF9800; font-weight: bold;">BORTE</span>
+            {% endif %}
+          </div>
+          <div>
+            <strong>Type:</strong><br>
+            {% set st = state_attr('device_tracker.iphone_17pro', 'source_type') %}
+            {% if st == 'gps' %}
+              ✅ <span style="color: #4CAF50; font-weight: bold;">GPS</span>
+            {% else %}
+              ⚠️ {{ st }}
+            {% endif %}
+          </div>
+          <div>
+            <strong>GPS-koordinater:</strong><br>
+            {% set lat = state_attr('device_tracker.iphone_17pro', 'latitude') %}
+            {% set lon = state_attr('device_tracker.iphone_17pro', 'longitude') %}
+            {% if lat and lon %}
+              {{ lat | round(4) }}, {{ lon | round(4) }}
+            {% else %}
+              Ingen data
+            {% endif %}
+          </div>
+          <div>
+            <strong>Nøyaktighet:</strong><br>
+            {% set acc = state_attr('device_tracker.iphone_17pro', 'gps_accuracy') %}
+            {% if acc %}
+              📍 {{ acc }} meter
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div>
+            <strong>Oppdatert:</strong><br>
+            {{ relative_time(states.device_tracker.iphone_17pro.last_updated) }} siden
+          </div>
+          <div>
+            <strong>Sist endret:</strong><br>
+            {{ relative_time(states.device_tracker.iphone_17pro.last_changed) }} siden
+          </div>
+        </div>
+      </div>
+
+  # Status og instruksjoner
+  - type: markdown
+    content: |
+      ---
+
+      ## 💡 Hvordan teste:
+
+      1. **Se på kortet nå** - alt skal vise "HJEMME"
+      2. **Gå ut av huset** med mobilen
+      3. **Vent 2-5 minutter**
+      4. **Se på kortet** (via mobil eller annen enhet)
+      5. **Skal vise "BORTE"** hvis GPS fungerer! ✅
+
+      ### ✅ Fungerer hvis:
+      - Begge viser "BORTE" når du er ute
+      - GPS-koordinater endrer seg
+      - "Oppdatert" er nylig (< 10 min)
+
+      ### ❌ Fungerer IKKE hvis:
+      - Viser "HJEMME" selv når du er borte (VPN-problem)
+      - GPS-koordinater ikke endrer seg
+      - "Oppdatert" er gammel (> 1 time)
+
+      ---
+
+      **Forventet med VPN:** GPS-tracker skal fungere perfekt! 🎯
