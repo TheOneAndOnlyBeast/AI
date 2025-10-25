@@ -1,0 +1,145 @@
+# ===================================================================
+# TRACKER DEBUG DASHBOARD CARD
+# Viser alle trackere og deres status for å finne ut hvilke som fungerer
+# ===================================================================
+
+type: vertical-stack
+cards:
+  # Header card
+  - type: markdown
+    content: |
+      # 📍 Tracker Status Oversikt
+      **Debugging: Hvilke trackere fungerer faktisk?**
+
+      <div style="padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; text-align: center; margin: 5px 0;">
+        {{ states('sensor.tracker_status_oversikt') }}
+      </div>
+
+  # Tracker liste
+  - type: markdown
+    content: |
+      ## 🎯 Device Trackers (device_tracker.*)
+
+      {% for tracker in state_attr('sensor.tracker_status_oversikt', 'trackere') %}
+        {% if tracker.entity_id.startswith('device_tracker.') %}
+
+      ---
+
+      **{{ tracker.navn }}**
+      `{{ tracker.entity_id }}`
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; background: {% if tracker.status == 'home' %}#4CAF50{% elif tracker.status == 'not_home' %}#FF9800{% else %}#9E9E9E{% endif %}22; border-radius: 8px; margin: 5px 0;">
+        <div>
+          <strong>Status:</strong><br>
+          {% if tracker.status == 'home' %}
+            🏠 <span style="color: #4CAF50; font-weight: bold;">HJEMME</span>
+          {% elif tracker.status == 'not_home' %}
+            🚗 <span style="color: #FF9800; font-weight: bold;">BORTE</span>
+          {% else %}
+            ❓ <span style="color: #9E9E9E;">{{ tracker.status | upper }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>Fungerer?</strong><br>
+          {% if tracker.fungerer == 'JA' %}
+            ✅ <span style="color: #4CAF50; font-weight: bold;">JA</span>
+          {% else %}
+            ❌ <span style="color: #f44336; font-weight: bold;">{{ tracker.fungerer }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>Sist endret:</strong><br>
+          {% if tracker.sist_endret_minutter < 60 %}
+            {{ tracker.sist_endret_minutter | int }} minutter siden
+          {% elif tracker.sist_endret_minutter < 1440 %}
+            {{ (tracker.sist_endret_minutter / 60) | round(1) }} timer siden
+          {% else %}
+            {{ (tracker.sist_endret_minutter / 1440) | round(1) }} dager siden
+          {% endif %}
+        </div>
+        <div>
+          <strong>Sist oppdatert:</strong><br>
+          {% if tracker.sist_oppdatert_minutter < 60 %}
+            {{ tracker.sist_oppdatert_minutter | int }} min siden
+          {% elif tracker.sist_oppdatert_minutter < 1440 %}
+            {{ (tracker.sist_oppdatert_minutter / 60) | round(1) }} timer siden
+          {% else %}
+            {{ (tracker.sist_oppdatert_minutter / 1440) | round(1) }} dager siden
+          {% endif %}
+        </div>
+      </div>
+        {% endif %}
+      {% endfor %}
+
+      ## 👤 Person Entities (person.*)
+
+      {% for tracker in state_attr('sensor.tracker_status_oversikt', 'trackere') %}
+        {% if tracker.entity_id.startswith('person.') %}
+
+      ---
+
+      **{{ tracker.navn }}**
+      `{{ tracker.entity_id }}`
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; background: {% if tracker.status == 'home' %}#4CAF50{% elif tracker.status == 'not_home' %}#FF9800{% else %}#9E9E9E{% endif %}22; border-radius: 8px; margin: 5px 0;">
+        <div>
+          <strong>Status:</strong><br>
+          {% if tracker.status == 'home' %}
+            🏠 <span style="color: #4CAF50; font-weight: bold;">HJEMME</span>
+          {% elif tracker.status == 'not_home' %}
+            🚗 <span style="color: #FF9800; font-weight: bold;">BORTE</span>
+          {% else %}
+            ❓ <span style="color: #9E9E9E;">{{ tracker.status | upper }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>Fungerer?</strong><br>
+          {% if tracker.fungerer == 'JA' %}
+            ✅ <span style="color: #4CAF50; font-weight: bold;">JA</span>
+          {% else %}
+            ❌ <span style="color: #f44336; font-weight: bold;">{{ tracker.fungerer }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>Sist endret:</strong><br>
+          {% if tracker.sist_endret_minutter < 60 %}
+            {{ tracker.sist_endret_minutter | int }} minutter siden
+          {% elif tracker.sist_endret_minutter < 1440 %}
+            {{ (tracker.sist_endret_minutter / 60) | round(1) }} timer siden
+          {% else %}
+            {{ (tracker.sist_endret_minutter / 1440) | round(1) }} dager siden
+          {% endif %}
+        </div>
+        <div>
+          <strong>Sist oppdatert:</strong><br>
+          {% if tracker.sist_oppdatert_minutter < 60 %}
+            {{ tracker.sist_oppdatert_minutter | int }} min siden
+          {% elif tracker.sist_oppdatert_minutter < 1440 %}
+            {{ (tracker.sist_oppdatert_minutter / 1440) | round(1) }} timer siden
+          {% else %}
+            {{ (tracker.sist_oppdatert_minutter / 1440) | round(1) }} dager siden
+          {% endif %}
+        </div>
+      </div>
+        {% endif %}
+      {% endfor %}
+
+      ---
+
+      ## 💡 Hva betyr dette?
+
+      - **Fungerer JA**: Trackeren har oppdatert status siste timen ✅
+      - **Fungerer NEI**: Trackeren har ikke oppdatert på lenge ❌
+      - **Sist endret**: Når status sist endret seg (home ↔ not_home)
+      - **Sist oppdatert**: Når Home Assistant sist mottok data fra trackeren
+
+      ### 🔍 Hva skal du se etter?
+
+      1. **"Fungerer JA"** = Pålitelig tracker (bruk denne!)
+      2. **"Sist oppdatert"** < 60 min = Aktiv tracker
+      3. **"Status"** endrer seg når du går ut/inn = Tracker som faktisk følger deg
+
+      ### ⚠️ Med VPN:
+      - Ping-baserte trackere vil ofte vise "hjemme" selv når du er borte
+      - Router-baserte trackere kan være upålitelige
+      - **GPS-baserte trackere (Companion App)** er det eneste som fungerer 100%!
