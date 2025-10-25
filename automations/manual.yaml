@@ -661,7 +661,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: device_tracker.iphone_17pro
+      entity_id: person.erik_narum
       from: home
       to: not_home
       for: "00:10:00"
