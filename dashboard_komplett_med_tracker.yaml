@@ -6,11 +6,12 @@ views:
     theme: ''
     badges: []
     cards:
+      # ========================================
+      # STRØM & KAPASITET
+      # ========================================
       - type: markdown
         content: >
-          # ⚡ Smart Kapasitetsledd-system
-
-          **Automatisk styring basert på ekte norsk kapasitetsledd-formel**
+          ## ⚡ Strøm & Kapasitet
 
 
           <div style="text-align: center; margin: 10px 0; padding: 10px;
@@ -19,26 +20,19 @@ views:
           500;">
             {% set anbefaling = states('sensor.kapasitetsledd_kutt_anbefaling') %}
             {% if anbefaling == 'KUTT NÅ!' %}
-              🚨 KUTT NÅ! - Laster kuttes for å holde kapasitetsledd under mål
+              🚨 KUTT NÅ! - Laster kuttes
             {% elif anbefaling == 'VARSLING' %}
-              ⚠️ VARSLING - Prognose nærmer seg trygg grense
+              ⚠️ VARSLING - Nærmer seg grense
             {% else %}
-              ✅ TRYGT - Forbruket er innenfor trygg grense
+              ✅ TRYGT - Innenfor grense
             {% endif %}
           </div>
-        card_mod:
-          style: |
-            ha-card {
-              background: var(--ha-card-background);
-              border-radius: 16px;
-              box-shadow: var(--ha-card-box-shadow);
-              margin-bottom: 8px;
-            }
+
       - type: horizontal-stack
         cards:
           - type: gauge
             entity: sensor.kapasitetsledd_aktuelt
-            name: Kapasitetsledd Aktuelt
+            name: Kapasitetsledd
             unit: kW
             min: 0
             max: 10
@@ -56,7 +50,7 @@ views:
                 color: '#F44336'
           - type: gauge
             entity: sensor.prognose_for_innevaerende_time
-            name: Prognose (denne timen)
+            name: Prognose
             unit: kWh
             min: 0
             max: 10
@@ -72,33 +66,35 @@ views:
                 color: '#FF9800'
               - from: 5
                 color: '#F44336'
+
       - type: entities
-        title: 📊 Kapasitetsledd-status
+        title: Kapasitetsledd
         show_header_toggle: false
         entities:
           - entity: sensor.kapasitetsledd_aktuelt
-            name: Kapasitetsledd nå
+            name: Nå
             icon: mdi:transmission-tower
           - entity: input_number.kapasitetsledd_maal
-            name: Målgrense
+            name: Mål
             icon: mdi:target
           - entity: sensor.kapasitetsledd_margin
-            name: Margin til mål
+            name: Margin
             icon: mdi:gauge
           - entity: sensor.kapasitetsledd_trygg_grense
-            name: Trygg grense (denne timen)
+            name: Trygg grense
             icon: mdi:shield-check
           - entity: sensor.kapasitetsledd_hvis_prognose
-            name: Kapasitetsledd hvis prognose
+            name: Hvis prognose
             icon: mdi:crystal-ball
           - entity: sensor.kapasitetsledd_kutt_anbefaling
             name: Anbefaling
             icon: mdi:alert-decagram
+
       - type: markdown
         content: >
           <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2
           100%); padding: 20px; border-radius: 16px; margin: 8px 0;">
-            <h3 style="margin: 0 0 15px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3 denne måneden</h3>
+            <h3 style="margin: 0 0 15px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3</h3>
 
             <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
               <tr style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -120,109 +116,17 @@ views:
 
             <div style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.5); border-radius: 8px; text-align: center;">
               <div style="font-size: 18px; font-weight: bold; color: #1a1a1a; margin-bottom: 4px;">
-                Kapasitetsledd: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+                {{ states('sensor.kapasitetsledd_aktuelt') }} kW
               </div>
               <div style="font-size: 13px; color: #666;">
                 ({{ states('input_number.peak_1_verdi') | float | round(2) }} + {{ states('input_number.peak_2_verdi') | float | round(2) }} + {{ states('input_number.peak_3_verdi') | float | round(2) }}) ÷ 3
               </div>
             </div>
-
-            <div style="text-align: center; color: #666; font-size: 11px; margin-top: 12px; opacity: 0.8;">
-              📅 {{ now().strftime('%B %Y') }} • Oppdatert {{ now().strftime('%d.%m kl. %H:%M') }}
-            </div>
           </div>
-      - type: custom:power-flow-card-plus
-        entities:
-          grid:
-            entity: sensor.p1_meter_power
-            name: Strømnett
-            icon: mdi:transmission-tower
-            color_icon: true
-            display_zero: true
-            unit_of_display: W
-          home:
-            entity: sensor.leilighet_restforbruk
-            name: Leilighet
-            color_icon: grid
-            override_state: true
-            icon: mdi:home
-            display_zero: true
-          individual:
-            - entity: sensor.shellyplus1pm_a8032ab13280_power
-              name: Billader
-              icon: mdi:car-electric
-              color: '#4a90e2'
-              display_zero: false
-              display_zero_tolerance: 5
-              unit_of_display: W
-            - entity: sensor.shellyplus1pm_a8032ab117c0_power
-              name: Ventilasjon
-              icon: mdi:fan
-              color: '#50e3c2'
-              display_zero: false
-              display_zero_tolerance: 2
-              unit_of_display: W
-            - entity: sensor.heavy_duty_switch_electric_consumption_w
-              name: Varmtvannsbereder
-              icon: mdi:water-boiler
-              color: '#f5a623'
-              display_zero: false
-              display_zero_tolerance: 5
-              unit_of_display: W
-            - entity: sensor.floor_thermostat_electric_consumption_w
-              name: Badegulv
-              icon: mdi:radiator
-              color: '#d0021b'
-              display_zero: false
-              display_zero_tolerance: 1
-              unit_of_display: W
-            - entity: sensor.wiz_socket_d875d8_power
-              name: Teknisk
-              icon: mdi:server
-              color: '#9b59b6'
-              display_zero: false
-              display_zero_tolerance: 2
-              unit_of_display: W
-            - entity: sensor.wiz_socket_da42ef_power
-              name: Kaffetrakter
-              icon: mdi:coffee-maker
-              color: '#795548'
-              display_zero: false
-              display_zero_tolerance: 2
-              unit_of_display: W
-          fossil_fuel_percentage:
-            entity: sensor.electricity_maps_grid_fossil_fuel_percentage
-            name: Grønn
-            state_type: percentage
-            icon: mdi:leaf
-            color_icon: true
-            display_zero: true
-            invert_value: true
-            unit_of_display: '%'
-        w_decimals: 0
-        kw_decimals: 2
-        watt_threshold: 1000
-        min_flow_rate: 0.5
-        max_flow_rate: 6
-        clickable_entities: true
-        use_new_flow_rate_model: true
-        transparency_zero_lines: 0.3
-        energy_date_selection: true
-        title: ⚡ Live Strømforbruk
-        animation: fade
-        animation_speed: 2
-        show_units: true
-        show_states: true
-        show_icons: true
-        colors:
-          grid_consumption: '#ef4444'
-          grid_production: '#22c55e'
-          home_consumption: '#3b82f6'
-          individual_consumption: '#8b5cf6'
+
       - type: markdown
         content: |
-          ## 🎛️ Høyeffektsenheter
-          **Automatisk kuttes av kapasitetsledd-systemet ved behov**
+          ## Høyeffektsenheter
       - type: horizontal-stack
         cards:
           - type: custom:button-card
@@ -287,6 +191,7 @@ views:
                     ]]]
             tap_action:
               action: toggle
+
       - type: horizontal-stack
         cards:
           - type: custom:button-card
@@ -371,20 +276,143 @@ views:
                     ]]]
             tap_action:
               action: more-info
+
+      - type: custom:power-flow-card-plus
+        entities:
+          grid:
+            entity: sensor.p1_meter_power
+            name: Strømnett
+            icon: mdi:transmission-tower
+            color_icon: true
+            display_zero: true
+            unit_of_display: W
+          home:
+            entity: sensor.leilighet_restforbruk
+            name: Leilighet
+            color_icon: grid
+            override_state: true
+            icon: mdi:home
+            display_zero: true
+          individual:
+            - entity: sensor.shellyplus1pm_a8032ab13280_power
+              name: Billader
+              icon: mdi:car-electric
+              color: '#4a90e2'
+              display_zero: false
+              display_zero_tolerance: 5
+              unit_of_display: W
+            - entity: sensor.shellyplus1pm_a8032ab117c0_power
+              name: Ventilasjon
+              icon: mdi:fan
+              color: '#50e3c2'
+              display_zero: false
+              display_zero_tolerance: 2
+              unit_of_display: W
+            - entity: sensor.heavy_duty_switch_electric_consumption_w
+              name: Varmtvannsbereder
+              icon: mdi:water-boiler
+              color: '#f5a623'
+              display_zero: false
+              display_zero_tolerance: 5
+              unit_of_display: W
+            - entity: sensor.floor_thermostat_electric_consumption_w
+              name: Badegulv
+              icon: mdi:radiator
+              color: '#d0021b'
+              display_zero: false
+              display_zero_tolerance: 1
+              unit_of_display: W
+            - entity: sensor.wiz_socket_d875d8_power
+              name: Teknisk
+              icon: mdi:server
+              color: '#9b59b6'
+              display_zero: false
+              display_zero_tolerance: 2
+              unit_of_display: W
+            - entity: sensor.wiz_socket_da42ef_power
+              name: Kaffetrakter
+              icon: mdi:coffee-maker
+              color: '#795548'
+              display_zero: false
+              display_zero_tolerance: 2
+              unit_of_display: W
+          fossil_fuel_percentage:
+            entity: sensor.electricity_maps_grid_fossil_fuel_percentage
+            name: Grønn
+            state_type: percentage
+            icon: mdi:leaf
+            color_icon: true
+            display_zero: true
+            invert_value: true
+            unit_of_display: '%'
+        w_decimals: 0
+        kw_decimals: 2
+        watt_threshold: 1000
+        min_flow_rate: 0.5
+        max_flow_rate: 6
+        clickable_entities: true
+        use_new_flow_rate_model: true
+        transparency_zero_lines: 0.3
+        energy_date_selection: true
+        title: Strømflyt
+        animation: fade
+        animation_speed: 2
+        show_units: true
+        show_states: true
+        show_icons: true
+        colors:
+          grid_consumption: '#ef4444'
+          grid_production: '#22c55e'
+          home_consumption: '#3b82f6'
+          individual_consumption: '#8b5cf6'
+
+      - type: entities
+        title: Detaljert
+        show_header_toggle: false
+        entities:
+          - type: section
+            label: Forbruk
+          - entity: sensor.p1_meter_power
+            name: Totalt
+            icon: mdi:flash
+          - entity: sensor.hourly_energy
+            name: Denne timen
+            icon: mdi:counter
+          - entity: sensor.leilighet_restforbruk
+            name: Restforbruk
+            icon: mdi:home
+          - type: section
+            label: Faser
+          - entity: sensor.p1_meter_current_phase_1
+            name: L1
+          - entity: sensor.p1_meter_current_phase_2
+            name: L2
+          - entity: sensor.p1_meter_current_phase_3
+            name: L3
+          - type: section
+            label: Spenning
+          - entity: sensor.p1_meter_voltage_phase_1
+            name: L1
+          - entity: sensor.p1_meter_voltage_phase_2
+            name: L2
+          - entity: sensor.p1_meter_voltage_phase_3
+            name: L3
+
+      # ========================================
+      # PERSON & TRACKING
+      # ========================================
       - type: markdown
         content: |
-          ## 👤 Person & Lys
+          ## 👤 Person & Tracking
 
-      # NYTT: GPS Tracker Status
       - type: markdown
         content: |
-          # 📍 Presence Tracking Status
-
           <div style="text-align: center; padding: 10px; background: {% if is_state('person.erik_narum', 'home') %}linear-gradient(135deg, #4CAF50 0%, #45a049 100%){% else %}linear-gradient(135deg, #FF9800 0%, #F57C00 100%){% endif %}; border-radius: 12px; color: white; font-size: 18px; font-weight: 600; margin: 10px 0;">
             {% if is_state('person.erik_narum', 'home') %}🏠 HJEMME{% else %}🚗 BORTE{% endif %}
           </div>
+
       - type: entities
-        title: Person - Erik Narum
+        title: Person
         show_header_toggle: false
         state_color: true
         entities:
@@ -406,8 +434,9 @@ views:
             attribute: longitude
             name: GPS Longitude
             icon: mdi:map-marker
+
       - type: entities
-        title: GPS Tracker - iPhone
+        title: GPS Tracker
         show_header_toggle: false
         state_color: true
         entities:
@@ -417,26 +446,25 @@ views:
           - type: attribute
             entity: device_tracker.iphone_17pro
             attribute: source_type
-            name: Tracker type
+            name: Type
             icon: mdi:information
           - type: attribute
             entity: device_tracker.iphone_17pro
             attribute: latitude
-            name: GPS Latitude
+            name: Latitude
             icon: mdi:crosshairs-gps
           - type: attribute
             entity: device_tracker.iphone_17pro
             attribute: longitude
-            name: GPS Longitude
+            name: Longitude
             icon: mdi:crosshairs-gps
           - type: attribute
             entity: device_tracker.iphone_17pro
             attribute: gps_accuracy
-            name: GPS Nøyaktighet
+            name: Nøyaktighet
             icon: mdi:target
-            suffix: ' meter'
+            suffix: ' m'
 
-      # Eksisterende person-kort (visuelt med avatar og batteri)
       - type: custom:button-card
         entity: device_tracker.iphone_17pro
         name: Erik
@@ -505,7 +533,10 @@ views:
               card:
                 - border: 2px solid var(--google-yellow-500)
 
-      # Lys-kontroller
+      - type: markdown
+        content: |
+          ## Lys
+
       - type: horizontal-stack
         cards:
           - type: custom:bubble-card
@@ -526,36 +557,3 @@ views:
             slider_live_update: true
             tap_action:
               action: toggle
-
-      # Detaljert forbruk
-      - type: entities
-        title: 📊 Detaljert forbruk
-        show_header_toggle: false
-        entities:
-          - type: section
-            label: Forbruk
-          - entity: sensor.p1_meter_power
-            name: Totalt
-            icon: mdi:flash
-          - entity: sensor.hourly_energy
-            name: Denne timen
-            icon: mdi:counter
-          - entity: sensor.leilighet_restforbruk
-            name: Restforbruk
-            icon: mdi:home
-          - type: section
-            label: Faser
-          - entity: sensor.p1_meter_current_phase_1
-            name: L1
-          - entity: sensor.p1_meter_current_phase_2
-            name: L2
-          - entity: sensor.p1_meter_current_phase_3
-            name: L3
-          - type: section
-            label: Spenning
-          - entity: sensor.p1_meter_voltage_phase_1
-            name: L1
-          - entity: sensor.p1_meter_voltage_phase_2
-            name: L2
-          - entity: sensor.p1_meter_voltage_phase_3
-            name: L3
