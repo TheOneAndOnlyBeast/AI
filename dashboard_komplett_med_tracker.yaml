@@ -375,70 +375,66 @@ views:
         content: |
           ## 👤 Person & Lys
 
-      # NYTT: GPS Tracker Status (detaljert tracking info)
-      - type: vertical-stack
-        cards:
-          - type: markdown
-            content: |
-              # 📍 Presence Tracking Status
+      # NYTT: GPS Tracker Status
+      - type: markdown
+        content: |
+          # 📍 Presence Tracking Status
 
-              <div style="text-align: center; padding: 10px; background: {% if is_state('person.erik_narum', 'home') %}linear-gradient(135deg, #4CAF50 0%, #45a049 100%){% else %}linear-gradient(135deg, #FF9800 0%, #F57C00 100%){% endif %}; border-radius: 12px; color: white; font-size: 18px; font-weight: 600; margin: 10px 0;">
-                {% if is_state('person.erik_narum', 'home') %}🏠 HJEMME{% else %}🚗 BORTE{% endif %}
-              </div>
-
-          - type: entities
-            title: 👤 Person: Erik Narum
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - entity: person.erik_narum
-                name: Status
-                icon: mdi:account
-              - type: attribute
-                entity: person.erik_narum
-                attribute: source
-                name: Bruker tracker
-                icon: mdi:radar
-              - type: attribute
-                entity: person.erik_narum
-                attribute: latitude
-                name: GPS Latitude
-                icon: mdi:map-marker
-              - type: attribute
-                entity: person.erik_narum
-                attribute: longitude
-                name: GPS Longitude
-                icon: mdi:map-marker
-
-          - type: entities
-            title: 📱 GPS Tracker - iPhone
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - entity: device_tracker.iphone_17pro
-                name: Status
-                icon: mdi:cellphone
-              - type: attribute
-                entity: device_tracker.iphone_17pro
-                attribute: source_type
-                name: Tracker type
-                icon: mdi:information
-              - type: attribute
-                entity: device_tracker.iphone_17pro
-                attribute: latitude
-                name: GPS Latitude
-                icon: mdi:crosshairs-gps
-              - type: attribute
-                entity: device_tracker.iphone_17pro
-                attribute: longitude
-                name: GPS Longitude
-                icon: mdi:crosshairs-gps
-              - type: attribute
-                entity: device_tracker.iphone_17pro
-                attribute: gps_accuracy
-                name: GPS Nøyaktighet
-                icon: mdi:target
-                suffix: ' meter'
+          <div style="text-align: center; padding: 10px; background: {% if is_state('person.erik_narum', 'home') %}linear-gradient(135deg, #4CAF50 0%, #45a049 100%){% else %}linear-gradient(135deg, #FF9800 0%, #F57C00 100%){% endif %}; border-radius: 12px; color: white; font-size: 18px; font-weight: 600; margin: 10px 0;">
+            {% if is_state('person.erik_narum', 'home') %}🏠 HJEMME{% else %}🚗 BORTE{% endif %}
+          </div>
+      - type: entities
+        title: Person - Erik Narum
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: person.erik_narum
+            name: Status
+            icon: mdi:account
+          - type: attribute
+            entity: person.erik_narum
+            attribute: source
+            name: Bruker tracker
+            icon: mdi:radar
+          - type: attribute
+            entity: person.erik_narum
+            attribute: latitude
+            name: GPS Latitude
+            icon: mdi:map-marker
+          - type: attribute
+            entity: person.erik_narum
+            attribute: longitude
+            name: GPS Longitude
+            icon: mdi:map-marker
+      - type: entities
+        title: GPS Tracker - iPhone
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: device_tracker.iphone_17pro
+            name: Status
+            icon: mdi:cellphone
+          - type: attribute
+            entity: device_tracker.iphone_17pro
+            attribute: source_type
+            name: Tracker type
+            icon: mdi:information
+          - type: attribute
+            entity: device_tracker.iphone_17pro
+            attribute: latitude
+            name: GPS Latitude
+            icon: mdi:crosshairs-gps
+          - type: attribute
+            entity: device_tracker.iphone_17pro
+            attribute: longitude
+            name: GPS Longitude
+            icon: mdi:crosshairs-gps
+          - type: attribute
+            entity: device_tracker.iphone_17pro
+            attribute: gps_accuracy
+            name: GPS Nøyaktighet
+            icon: mdi:target
+            suffix: ' meter'
 
       # Eksisterende person-kort (visuelt med avatar og batteri)
       - type: custom:button-card
