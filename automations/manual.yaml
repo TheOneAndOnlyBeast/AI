@@ -661,7 +661,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: person.erik_narum
+      entity_id: device_tracker.iphone_17pro
       from: home
       to: not_home
       for: "00:10:00"
@@ -679,6 +679,11 @@
         {{ states('vacuum.roborock_s7_maxv') not in ['unavailable', 'unknown'] and
            states('vacuum.nr_7') not in ['unavailable', 'unknown'] }}
   action:
+    - service: system_log.write
+      data:
+        message: "Robotstøvsuger-automatisering trigget! Erik er borte."
+        level: info
+
     - if:
         - condition: template
           value_template: >
@@ -687,6 +692,15 @@
         - service: vacuum.start
           target:
             entity_id: vacuum.roborock_s7_maxv
+        - service: system_log.write
+          data:
+            message: "Roborock S7 MaxV startet (batteri: {{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') }}%)"
+            level: info
+      else:
+        - service: system_log.write
+          data:
+            message: "Roborock S7 MaxV IKKE startet - lavt batteri ({{ state_attr('vacuum.roborock_s7_maxv', 'battery_level') }}%)"
+            level: warning
 
     - if:
         - condition: template
@@ -696,6 +710,15 @@
         - service: vacuum.start
           target:
             entity_id: vacuum.nr_7
+        - service: system_log.write
+          data:
+            message: "Nr 7 startet (batteri: {{ state_attr('vacuum.nr_7', 'battery_level') }}%)"
+            level: info
+      else:
+        - service: system_log.write
+          data:
+            message: "Nr 7 IKKE startet - lavt batteri ({{ state_attr('vacuum.nr_7', 'battery_level') }}%)"
+            level: warning
 
     - service: input_datetime.set_datetime
       target:
