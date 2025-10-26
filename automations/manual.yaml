@@ -952,9 +952,11 @@
             true
           {% elif current_hour < 6 %}
             true
-          {% elif current_hour == 6 and is_weekday and current_minute < 30 %}
+          {% elif current_hour == 6 and is_weekday and current_minute < 31 %}
             true
-          {% elif current_hour == 6 and not is_weekday %}
+          {% elif current_hour == 7 and not is_weekday and current_minute == 0 %}
+            true
+          {% elif current_hour < 7 and not is_weekday %}
             true
           {% else %}
             false
@@ -983,16 +985,16 @@
 - id: gang_lys_nattemodus_overgang
   alias: "Gang lys - Nattemodus overgang"
   description: "Bytter mellom dag/natt-modus på riktig tid."
-  mode: single
+  mode: restart
   trigger:
     - platform: time
       at: "22:00:00"
       id: "start_night"
     - platform: time
-      at: "06:30:00"
+      at: "06:31:00"
       id: "end_night_weekday"
     - platform: time
-      at: "07:00:00"
+      at: "07:01:00"
       id: "end_night_weekend"
   condition:
     - condition: state
