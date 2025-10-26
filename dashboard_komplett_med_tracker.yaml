@@ -125,7 +125,10 @@ views:
 
             <div style="margin-top: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 8px;">
               <div style="font-size: 14px; color: #1a1a1a;">
-                <strong>⏱️ Siste time:</strong> {{ states('sensor.hourly_energy') | float | round(2) }} kWh
+                <strong>📊 Inneværende time:</strong> {{ states('sensor.prognose_for_innevaerende_time') | float | round(2) }} kWh (prognose)
+              </div>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                Så langt: {{ states('sensor.hourly_energy') | float | round(2) }} kWh
               </div>
             </div>
           </div>
