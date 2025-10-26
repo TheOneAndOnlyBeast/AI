@@ -1043,3 +1043,17 @@
                 brightness: 255
                 color_temp_kelvin: 2702
                 transition: 10
+- id: lagre_forrige_time_forbruk
+  alias: "Lagre forrige time - Forbruk"
+  description: "Lagrer forbruket fra forrige fullførte time hver time."
+  mode: single
+  trigger:
+    - platform: time_pattern
+      minutes: "0"
+      seconds: "30"
+  action:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.forrige_time_forbruk
+      data:
+        value: "{{ states('sensor.hourly_energy') | float(0) }}"

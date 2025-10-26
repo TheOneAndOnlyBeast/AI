@@ -104,6 +104,16 @@ input_number:
     mode: box
     icon: mdi:target
 
+  forrige_time_forbruk:
+    name: "Forrige time - Forbruk"
+    min: 0
+    max: 50
+    step: 0.01
+    initial: 0
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:clock-time-eight
+
   kapasitetsledd_kutt_hysterese_min:
     name: "Kapasitetsledd - Kutt hysterese (minutter)"
     min: 1
