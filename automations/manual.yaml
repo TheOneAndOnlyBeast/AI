@@ -976,7 +976,7 @@
           target:
             entity_id: light.lys_gang
           data:
-            brightness: 254
+            brightness: 255
             color_temp_kelvin: 2702
             transition: 5
 
@@ -1025,7 +1025,7 @@
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: 254
+                brightness: 255
                 color_temp_kelvin: 2702
                 transition: 10
         - conditions:
@@ -1038,6 +1038,6 @@
               target:
                 entity_id: light.lys_gang
               data:
-                brightness: 254
+                brightness: 255
                 color_temp_kelvin: 2702
                 transition: 10
