@@ -122,6 +122,12 @@ views:
                 ({{ states('input_number.peak_1_verdi') | float | round(2) }} + {{ states('input_number.peak_2_verdi') | float | round(2) }} + {{ states('input_number.peak_3_verdi') | float | round(2) }}) ÷ 3
               </div>
             </div>
+
+            <div style="margin-top: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 8px;">
+              <div style="font-size: 14px; color: #1a1a1a;">
+                <strong>⏱️ Siste time:</strong> {{ states('sensor.hourly_energy') | float | round(2) }} kWh
+              </div>
+            </div>
           </div>
 
       - type: markdown
