@@ -25,6 +25,12 @@ input_boolean:
     initial: true
     icon: mdi:water-boiler-auto
 
+  # Sonos kjøkken
+  sonos_kjokken_auto:
+    name: "Sonos Kjøkken - Automatisk radio"
+    icon: mdi:music-circle
+    initial: true
+
   # Peak-kontroll flags
   peak_kontroll_vvb_deaktivert:
     name: "Peak-kontroll - VVB deaktivert"

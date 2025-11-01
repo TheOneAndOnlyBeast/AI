@@ -1057,3 +1057,118 @@
         entity_id: input_number.forrige_time_forbruk
       data:
         value: "{{ states('sensor.hourly_energy') | float(0) }}"
+
+# ================================================================
+# SONOS KJØKKEN - AUTOMATISK RADIO
+# ================================================================
+
+- id: sonos_kjokken_start_radio
+  alias: "Sonos - Start radio på kjøkkenet"
+  description: "Starter radio på Sonos når du er på kjøkkenet (ikke natt/TV)."
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.KJOKKEN_BEVEGELSE  # BYTT UT MED DIN SENSOR!
+      to: "on"
+      for:
+        seconds: 30  # Venter 30 sek før start (unngår false triggers)
+  condition:
+    # Automatisering er aktivert
+    - condition: state
+      entity_id: input_boolean.sonos_kjokken_auto
+      state: "on"
+
+    # Kun på dagtid (ikke natt)
+    - condition: time
+      after: "07:00:00"
+      before: "22:00:00"
+    
+    # TV er IKKE på
+    - condition: state
+      entity_id: media_player.samsung_qn85ba_85_qe85qn85batxxc
+      state: "off"
+    
+    # Sonos spiller ikke allerede
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+          state: "playing"
+    
+    # Du er hjemme
+    - condition: state
+      entity_id: person.erik_narum
+      state: "home"
+  action:
+    # Start radio med fade-in
+    - service: media_player.volume_set
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      data:
+        volume_level: 0.15  # Starter lavt
+    
+    - service: media_player.play_media
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      data:
+        media_content_type: music
+        media_content_id: "x-sonosapi-stream:s6712?sid=254&flags=8224&sn=0"  # NRK P1 (BYTT TIL DIN FAVORITT!)
+    
+    - delay:
+        seconds: 2
+    
+    # Fade-in til målvolum
+    - service: media_player.volume_set
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      data:
+        volume_level: 0.30  # Målvolum (30%)
+
+- id: sonos_kjokken_stopp_radio
+  alias: "Sonos - Stopp radio når forlater kjøkkenet"
+  description: "Stopper/pauser radio når du forlater kjøkkenet."
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.KJOKKEN_BEVEGELSE  # BYTT UT MED DIN SENSOR!
+      to: "off"
+      for:
+        minutes: 3  # Grace period - stopper ikke med én gang
+  condition:
+    # Sonos spiller faktisk
+    - condition: state
+      entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      state: "playing"
+  action:
+    # Fade-out
+    - service: media_player.volume_set
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      data:
+        volume_level: 0.10
+    
+    - delay:
+        seconds: 2
+    
+    # Pause (ikke stopp - kan fortsette senere)
+    - service: media_player.media_pause
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+
+- id: sonos_kjokken_stopp_ved_tv
+  alias: "Sonos - Stopp når TV skrus på"
+  description: "Pauser Sonos automatisk når TV-en skrus på."
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: media_player.samsung_qn85ba_85_qe85qn85batxxc
+      to: "playing"
+  condition:
+    # Sonos spiller
+    - condition: state
+      entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
+      state: "playing"
+  action:
+    - service: media_player.media_pause
+      target:
+        entity_id: media_player.living_room  # BYTT UT MED DIN SONOS!
