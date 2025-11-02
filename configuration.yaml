@@ -120,6 +120,16 @@ input_number:
     mode: box
     icon: mdi:clock-time-eight
 
+  p1_meter_siste_time_start:
+    name: "P1 Meter - Timestart verdi"
+    min: 0
+    max: 999999
+    step: 0.001
+    initial: 0
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:counter
+
   kapasitetsledd_kutt_hysterese_min:
     name: "Kapasitetsledd - Kutt hysterese (minutter)"
     min: 1
@@ -242,13 +252,24 @@ template:
         device_class: power
         state_class: measurement
 
+      # P1 Timeforbruk - beregnet fra direkte måleravlesning
+      - name: "P1 Timeforbruk (korrekt)"
+        unique_id: p1_timeforbruk_korrekt
+        unit_of_measurement: "kWh"
+        icon: mdi:counter
+        state_class: measurement
+        state: >
+          {% set current = states('sensor.p1_meter_energy_import') | float(0) %}
+          {% set start = states('input_number.p1_meter_siste_time_start') | float(0) %}
+          {{ (current - start) | round(3) }}
+
       # Prognose basert på P1 meter
       - name: "Prognose for inneværende time"
         unique_id: prognose_for_timen_p1
         unit_of_measurement: "kWh"
         icon: mdi:lightning-bolt
         state: >
-          {% set consumed = states('sensor.hourly_energy') | float(0) %}
+          {% set consumed = states('sensor.p1_timeforbruk_korrekt') | float(0) %}
           {% set current_power = states('sensor.p1_meter_power') | float(0) / 1000 %}
           {% set minutes_left = 60 - now().minute %}
           {% set projected = (current_power * minutes_left / 60) %}

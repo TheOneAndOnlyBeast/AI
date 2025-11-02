@@ -443,7 +443,7 @@
 # ===================================================================
 - id: effektledd_oppdater_topper
   alias: "Effektledd - Oppdater topp-3"
-  description: "Kjører 30 sek etter timeskiftet for å logge korrekt timeforbruk."
+  description: "Kjører 30 sek etter timeskiftet for å logge korrekt timeforbruk fra P1-måler."
   mode: single
   trigger:
     - platform: time_pattern
@@ -452,10 +452,10 @@
       seconds: 30
   condition:
     - condition: template
-      value_template: "{{ states('sensor.hourly_energy') not in ['unavailable', 'unknown'] }}"
+      value_template: "{{ states('sensor.p1_timeforbruk_korrekt') not in ['unavailable', 'unknown'] }}"
   action:
     - variables:
-        new_peak: "{{ states('sensor.hourly_energy') | float(0) }}"
+        new_peak: "{{ states('sensor.p1_timeforbruk_korrekt') | float(0) }}"
         peak1: "{{ states('input_number.peak_1_verdi') | float(0) }}"
         peak2: "{{ states('input_number.peak_2_verdi') | float(0) }}"
         peak3: "{{ states('input_number.peak_3_verdi') | float(0) }}"
@@ -1043,9 +1043,24 @@
                 brightness: 255
                 color_temp_kelvin: 2702
                 transition: 10
+- id: p1_lagre_timestart
+  alias: "P1 - Lagre timestart verdi"
+  description: "Lagrer P1-målerstand ved start av hver time for korrekt timeforbruk-beregning."
+  mode: single
+  trigger:
+    - platform: time_pattern
+      minutes: "0"
+      seconds: "0"
+  action:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.p1_meter_siste_time_start
+      data:
+        value: "{{ states('sensor.p1_meter_energy_import') | float(0) }}"
+
 - id: lagre_forrige_time_forbruk
   alias: "Lagre forrige time - Forbruk"
-  description: "Lagrer forbruket fra forrige fullførte time hver time."
+  description: "Lagrer forbruket fra forrige fullførte time hver time (fra P1-måler)."
   mode: single
   trigger:
     - platform: time_pattern
@@ -1056,7 +1071,7 @@
       target:
         entity_id: input_number.forrige_time_forbruk
       data:
-        value: "{{ states('sensor.hourly_energy') | float(0) }}"
+        value: "{{ states('sensor.p1_timeforbruk_korrekt') | float(0) }}"
 
 # ================================================================
 # SONOS KJØKKEN - AUTOMATISK RADIO
