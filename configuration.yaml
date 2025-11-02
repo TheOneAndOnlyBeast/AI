@@ -99,6 +99,16 @@ input_number:
     mode: box
     icon: mdi:gauge
 
+  p1_meter_siste_time_start:
+    name: "P1 Meter - Timestart verdi"
+    min: 0
+    max: 999999
+    step: 0.001
+    initial: 0
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:counter
+
   # NYE: Kapasitetsledd-system
   kapasitetsledd_maal:
     name: "Kapasitetsledd - Målgrense"
