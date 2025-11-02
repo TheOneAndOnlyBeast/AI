@@ -439,6 +439,48 @@
 
 
 # ===================================================================
+# EFFEKTLEDD: MÅNEDLIG NULLSTILLING AV TOPP-3
+# ===================================================================
+- id: effektledd_nullstill_maaned
+  alias: "Effektledd - Nullstill topp-3 ved månedsskifte"
+  description: "Nullstiller topp-3 verdier den 1. i hver måned kl 00:00:05 (kapasitetsledd per måned)."
+  mode: single
+  trigger:
+    - platform: time
+      at: "00:00:05"
+  condition:
+    - condition: template
+      value_template: "{{ now().day == 1 }}"
+  action:
+    # Nullstill alle verdier
+    - service: input_number.set_value
+      target:
+        entity_id:
+          - input_number.peak_1_verdi
+          - input_number.peak_2_verdi
+          - input_number.peak_3_verdi
+      data:
+        value: 0
+
+    # Nullstill alle tidspunkter
+    - service: input_text.set_value
+      target:
+        entity_id:
+          - input_text.peak_1_tidspunkt
+          - input_text.peak_2_tidspunkt
+          - input_text.peak_3_tidspunkt
+      data:
+        value: "-"
+
+    # Notifikasjon
+    - service: persistent_notification.create
+      data:
+        title: "📅 Ny måned - Topp-3 nullstilt"
+        message: >
+          Kapasitetsledd for {{ (now() - timedelta(days=1)).strftime('%B %Y') }} er ferdig beregnet.
+          Topp-3 verdier er nå nullstilt for {{ now().strftime('%B %Y') }}.
+
+# ===================================================================
 # EFFEKTLEDD: OPPDATER TOPP-3
 # ===================================================================
 - id: effektledd_oppdater_topper
