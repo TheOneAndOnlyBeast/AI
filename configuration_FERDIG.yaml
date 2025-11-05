@@ -199,22 +199,6 @@ sensor:
     method: left
 
 # ===================================================================
-# UTILITY METERS for timeforbruk
-# ===================================================================
-utility_meter:
-  hourly_energy:
-    source: sensor.p1_meter_energy_import
-    cycle: hourly
-
-  daily_energy:
-    source: sensor.p1_meter_energy_import
-    cycle: daily
-
-  monthly_energy:
-    source: sensor.p1_meter_energy_import
-    cycle: monthly
-
-# ===================================================================
 # TEMPLATE-SENSORER
 # ===================================================================
 template:
