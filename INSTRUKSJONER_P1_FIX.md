@@ -2,10 +2,11 @@
 
 ## ✅ Ferdige filer du kan kopiere:
 
-1. **configuration_FERDIG.yaml** (444 linjer)
+1. **configuration_FERDIG.yaml** (430 linjer) - utility_meter fjernet
 2. **automations_manual_FERDIG.yaml** (1020 linjer)
+3. **dashboard_FERDIG.yaml** - oppdatert til å bruke P1-sensor
 
-Begge filer er **testet og validert** - YAML-syntaks er korrekt.
+Alle filer er **testet og validert** - YAML-syntaks er korrekt.
 
 ---
 
@@ -91,6 +92,8 @@ Klokken XX:00:30 (f.eks. 15:00:30):
 ✅ **"Prognose for inneværende time"** - bruker korrekt sensor
 ✅ **Automation "P1 - Lagre timestart verdi"** - kjører XX:00:00
 ✅ **"Effektledd - Oppdater topp-3"** - bruker P1-direkte istedenfor utility_meter
+✅ **utility_meter fjernet** - ikke lenger nødvendig, ga timing-problemer
+✅ **Dashboard oppdatert** - bruker sensor.p1_timeforbruk_korrekt istedenfor sensor.hourly_energy
 
 ### Slik fungerer det:
 
