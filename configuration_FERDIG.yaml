@@ -179,25 +179,6 @@ sensor:
 #    json_attributes:
 #      - datoer
 
-  # ===================================================================
-  # WIZ ENERGY SENSORER (konverterer power til energy)
-  # ===================================================================
-  - platform: integration
-    source: sensor.wiz_socket_d875d8_power
-    name: "WiZ Socket 1 Energy"
-    unique_id: wiz_socket_d875d8_energy
-    unit_prefix: k
-    round: 2
-    method: left
-
-  - platform: integration
-    source: sensor.wiz_socket_da42ef_power
-    name: "WiZ Socket 2 Energy"
-    unique_id: wiz_socket_da42ef_energy
-    unit_prefix: k
-    round: 2
-    method: left
-
 # ===================================================================
 # TEMPLATE-SENSORER
 # ===================================================================
@@ -244,65 +225,12 @@ template:
           {% set projected = (current_power * minutes_left / 60) %}
           {{ (consumed + projected) | round(2) }}
 
-      # Neste søppeldag
-      - name: "Neste søppeldag"
-        unique_id: neste_soppeldag_dato
-        state: >
-          {% set dato = states('sensor.maren_neste_tomming') %}
-          {% if dato not in ['unknown', 'unavailable', 'none'] %}
-            {{ as_datetime(dato).day }}. {{ as_datetime(dato).strftime('%b') | lower }}
-          {% else %}
-            Ukjent
-          {% endif %}
-
-      # Type søppel
-      - name: "Type søppel neste gang"
-        unique_id: type_soppel_neste_gang
-        state: >
-          {% set attr = state_attr('sensor.maren_neste_tomming', 'datoer') %}
-          {% if attr and attr[0] %}
-            {{ attr[0].fraksjon }}
-          {% else %}
-            Ukjent
-          {% endif %}
-
-      # Gang lys info
-      - name: "Gang lys info"
-        unique_id: gang_lys_status_info
-        state: >
-          {% if is_state('light.lys_gang', 'off') %}
-            Av
-          {% else %}
-            {% set brightness = (state_attr('light.lys_gang', 'brightness') | float(0) / 255 * 100) | round(0) | int %}
-            {% set color_temp = state_attr('light.lys_gang', 'color_temp_kelvin') %}
-            {% set rgb = state_attr('light.lys_gang', 'rgb_color') %}
-
-            {% if color_temp is not none %}
-              {{ brightness }}% - {{ color_temp }}K
-            {% elif rgb is not none %}
-              {% if rgb == [255, 0, 0] %}
-                {{ brightness }}% - Nattmodus
-              {% else %}
-                {{ brightness }}% - RGB
-              {% endif %}
-            {% else %}
-              {{ brightness }}%
-            {% endif %}
-          {% endif %}
-        icon: >
-          {% if is_state('light.lys_gang', 'off') %}
-            mdi:lightbulb-off
-          {% elif state_attr('light.lys_gang', 'rgb_color') == [255, 0, 0] %}
-            mdi:lightbulb-night
-          {% else %}
-            mdi:lightbulb-on
-          {% endif %}
-
       # ===================================================================
-      # NYE: KAPASITETSLEDD-SENSORER
+      # KAPASITETSLEDD-SENSORER
       # ===================================================================
 
       # Aktuelt kapasitetsledd (gjennomsnitt av topp-3)
+      # VIKTIG: Norsk kapasitetsledd deles ALLTID på 3, ikke på antall timer!
       - name: "Kapasitetsledd aktuelt"
         unique_id: kapasitetsledd_aktuelt
         unit_of_measurement: "kW"
@@ -313,15 +241,7 @@ template:
           {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
           {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
           {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
-          {% if peak1 > 0 and peak2 > 0 and peak3 > 0 %}
-            {{ ((peak1 + peak2 + peak3) / 3) | round(2) }}
-          {% elif peak1 > 0 and peak2 > 0 %}
-            {{ ((peak1 + peak2) / 2) | round(2) }}
-          {% elif peak1 > 0 %}
-            {{ peak1 | round(2) }}
-          {% else %}
-            0
-          {% endif %}
+          {{ ((peak1 + peak2 + peak3) / 3) | round(2) }}
         attributes:
           peak_1: "{{ states('input_number.peak_1_verdi') | float(0) | round(2) }}"
           peak_2: "{{ states('input_number.peak_2_verdi') | float(0) | round(2) }}"
@@ -451,13 +371,3 @@ template:
               Prognose {{ prognose }} kWh er under trygg grense {{ trygg }} kWh
             {% endif %}
 
-  # ===================================================================
-  # BINARY SENSOR
-  # ===================================================================
-  - binary_sensor:
-      - name: "Kapasitetsledd faresone"
-        unique_id: kapasitetsledd_faresone
-        device_class: problem
-        state: >
-          {% set margin = states('sensor.kapasitetsledd_margin') | float(0) %}
-          {{ margin < 0.5 }}
