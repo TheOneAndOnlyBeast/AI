@@ -341,10 +341,27 @@ template:
           {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
           {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
           {% if peak3 == 0 %}
-            {{ maal | round(1) }}
+            {# Ikke nok data ennå - vær konservativ #}
+            {{ (maal * 0.85) | round(2) }}
           {% else %}
-            {{ (peak3 - 0.1) | round(1) }}
+            {# Beregn maks timeforbruk uten å øke kapasitetsledd over mål #}
+            {# Hvis ny time > peak3: nytt kapasitetsledd = (peak1 + peak2 + ny) / 3 #}
+            {# For å holde under mål: ny ≤ 3×mål - peak1 - peak2 - buffer #}
+            {% set trygg = (3 * maal) - peak1 - peak2 - 0.15 %}
+            {# Sikre at trygg grense aldri er mindre enn 0.5 kWh #}
+            {{ [trygg, 0.5] | max | round(2) }}
           {% endif %}
+        attributes:
+          forklaring: >
+            {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
+            {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
+            {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
+            {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+            {% if peak3 == 0 %}
+              Venter på mer data fra måneden
+            {% else %}
+              Bruk under dette for å holde kapasitetsledd under {{ maal }} kW (3×{{ maal }} - {{ peak1 }} - {{ peak2 }} = {{ ((3 * maal) - peak1 - peak2) | round(2) }})
+            {% endif %}
 
       # Potensielt kapasitetsledd hvis prognosen realiseres
       - name: "Kapasitetsledd hvis prognose"
@@ -357,15 +374,33 @@ template:
           {% set peak1 = states('input_number.peak_1_verdi') | float(0) %}
           {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
           {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
-          {% if prognose > peak1 %}
+          {% if peak1 == 0 %}
+            {# Første time i måneden #}
+            {{ (prognose / 3) | round(2) }}
+          {% elif peak2 == 0 %}
+            {# Andre time i måneden #}
+            {{ ((peak1 + prognose) / 3) | round(2) }}
+          {% elif peak3 == 0 %}
+            {# Tredje time i måneden #}
+            {{ ((peak1 + peak2 + prognose) / 3) | round(2) }}
+          {% elif prognose > peak1 %}
+            {# Prognose blir ny #1 #}
             {{ ((prognose + peak1 + peak2) / 3) | round(2) }}
           {% elif prognose > peak2 %}
+            {# Prognose blir ny #2 #}
             {{ ((peak1 + prognose + peak2) / 3) | round(2) }}
           {% elif prognose > peak3 %}
+            {# Prognose blir ny #3 #}
             {{ ((peak1 + peak2 + prognose) / 3) | round(2) }}
           {% else %}
+            {# Prognose påvirker ikke topp-3 #}
             {{ states('sensor.kapasitetsledd_aktuelt') | float(0) }}
           {% endif %}
+        attributes:
+          vil_pavirke: >
+            {% set prognose = states('sensor.prognose_for_innevaerende_time') | float(0) %}
+            {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
+            {{ prognose > peak3 }}
 
       # Margin til målgrense
       - name: "Kapasitetsledd margin"

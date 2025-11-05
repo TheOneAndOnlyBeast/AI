@@ -88,38 +88,41 @@ views:
         content: >
           <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2
           100%); padding: 20px; border-radius: 16px; margin: 8px 0;">
-            <h3 style="margin: 0 0 15px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3</h3>
+            <h3 style="margin: 0 0 8px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3 høyeste timer (inneværende måned)</h3>
+            <p style="margin: 0 0 15px 0; text-align: center; color: #666; font-size: 12px;">Ditt kapasitetsledd beregnes som gjennomsnittet av disse 3 timene</p>
 
             <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
               <tr style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <td style="padding: 16px; border-radius: 12px 0 0 12px; text-align: center; font-size: 28px; width: 60px;">🥇</td>
-                <td style="padding: 16px; font-weight: bold; font-size: 20px; width: 100px;">{{ states('input_number.peak_1_verdi') | round(2) }} kWh</td>
+                <td style="padding: 16px; font-weight: bold; font-size: 20px; width: 100px;">{{ states('input_number.peak_1_verdi') | float(0) | round(2) }} kWh</td>
                 <td style="padding: 16px; border-radius: 0 12px 12px 0; color: #333; font-size: 14px;">{{ states('input_text.peak_1_tidspunkt') }}</td>
               </tr>
               <tr style="background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%); color: #1a1a1a; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
                 <td style="padding: 14px; border-radius: 12px 0 0 12px; text-align: center; font-size: 24px; width: 60px;">🥈</td>
-                <td style="padding: 14px; font-weight: bold; font-size: 18px; width: 100px;">{{ states('input_number.peak_2_verdi') | round(2) }} kWh</td>
+                <td style="padding: 14px; font-weight: bold; font-size: 18px; width: 100px;">{{ states('input_number.peak_2_verdi') | float(0) | round(2) }} kWh</td>
                 <td style="padding: 14px; border-radius: 0 12px 12px 0; color: #333; font-size: 13px;">{{ states('input_text.peak_2_tidspunkt') }}</td>
               </tr>
               <tr style="background: linear-gradient(135deg, #CD7F32 0%, #B8732A 100%); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
                 <td style="padding: 14px; border-radius: 12px 0 0 12px; text-align: center; font-size: 22px; width: 60px;">🥉</td>
-                <td style="padding: 14px; font-weight: bold; font-size: 16px; width: 100px;">{{ states('input_number.peak_3_verdi') | round(2) }} kWh</td>
+                <td style="padding: 14px; font-weight: bold; font-size: 16px; width: 100px;">{{ states('input_number.peak_3_verdi') | float(0) | round(2) }} kWh</td>
                 <td style="padding: 14px; border-radius: 0 12px 12px 0; color: #f0f0f0; font-size: 13px;">{{ states('input_text.peak_3_tidspunkt') }}</td>
               </tr>
             </table>
 
             <div style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.5); border-radius: 8px; text-align: center;">
-              <div style="font-size: 18px; font-weight: bold; color: #1a1a1a; margin-bottom: 4px;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 2px;">DITT KAPASITETSLEDD</div>
+              <div style="font-size: 22px; font-weight: bold; color: #1a1a1a; margin-bottom: 4px;">
                 {{ states('sensor.kapasitetsledd_aktuelt') }} kW
               </div>
-              <div style="font-size: 13px; color: #666;">
-                ({{ states('input_number.peak_1_verdi') | float | round(2) }} + {{ states('input_number.peak_2_verdi') | float | round(2) }} + {{ states('input_number.peak_3_verdi') | float | round(2) }}) ÷ 3
+              <div style="font-size: 12px; color: #666;">
+                ({{ states('input_number.peak_1_verdi') | float(0) | round(2) }} + {{ states('input_number.peak_2_verdi') | float(0) | round(2) }} + {{ states('input_number.peak_3_verdi') | float(0) | round(2) }}) ÷ 3
               </div>
             </div>
 
-            <div style="margin-top: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 8px;">
+            <div style="margin-top: 10px; padding: 10px; background: {% if (states('sensor.p1_timeforbruk_korrekt') | float(0)) > (states('sensor.kapasitetsledd_trygg_grense') | float(0)) %}rgba(255, 152, 0, 0.15); border-left: 4px solid #FF9800{% else %}rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50{% endif %}; border-radius: 8px;">
               <div style="font-size: 14px; color: #1a1a1a;">
-                <strong>⏱️ Denne time:</strong> {{ states('sensor.p1_timeforbruk_korrekt') | float | round(2) }} kWh
+                <strong>⏱️ Denne time:</strong> {{ states('sensor.p1_timeforbruk_korrekt') | float(0) | round(2) }} kWh
+                <span style="font-size: 12px; color: #666;">(Trygg grense: {{ states('sensor.kapasitetsledd_trygg_grense') | float(0) | round(2) }} kWh)</span>
               </div>
             </div>
           </div>
