@@ -179,6 +179,25 @@ sensor:
 #    json_attributes:
 #      - datoer
 
+  # ===================================================================
+  # WIZ ENERGY SENSORER (konverterer power til energy)
+  # ===================================================================
+  - platform: integration
+    source: sensor.wiz_socket_d875d8_power
+    name: "WiZ Socket 1 Energy"
+    unique_id: wiz_socket_d875d8_energy
+    unit_prefix: k
+    round: 2
+    method: left
+
+  - platform: integration
+    source: sensor.wiz_socket_da42ef_power
+    name: "WiZ Socket 2 Energy"
+    unique_id: wiz_socket_da42ef_energy
+    unit_prefix: k
+    round: 2
+    method: left
+
 # ===================================================================
 # TEMPLATE-SENSORER
 # ===================================================================
@@ -224,6 +243,38 @@ template:
           {% set minutes_left = 60 - now().minute %}
           {% set projected = (current_power * minutes_left / 60) %}
           {{ (consumed + projected) | round(2) }}
+
+      # Gang lys info
+      - name: "Gang lys info"
+        unique_id: gang_lys_status_info
+        state: >
+          {% if is_state('light.lys_gang', 'off') %}
+            Av
+          {% else %}
+            {% set brightness = (state_attr('light.lys_gang', 'brightness') | float(0) / 255 * 100) | round(0) | int %}
+            {% set color_temp = state_attr('light.lys_gang', 'color_temp_kelvin') %}
+            {% set rgb = state_attr('light.lys_gang', 'rgb_color') %}
+
+            {% if color_temp is not none %}
+              {{ brightness }}% - {{ color_temp }}K
+            {% elif rgb is not none %}
+              {% if rgb == [255, 0, 0] %}
+                {{ brightness }}% - Nattmodus
+              {% else %}
+                {{ brightness }}% - RGB
+              {% endif %}
+            {% else %}
+              {{ brightness }}%
+            {% endif %}
+          {% endif %}
+        icon: >
+          {% if is_state('light.lys_gang', 'off') %}
+            mdi:lightbulb-off
+          {% elif state_attr('light.lys_gang', 'rgb_color') == [255, 0, 0] %}
+            mdi:lightbulb-night
+          {% else %}
+            mdi:lightbulb-on
+          {% endif %}
 
       # ===================================================================
       # KAPASITETSLEDD-SENSORER
