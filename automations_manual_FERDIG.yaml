@@ -439,6 +439,25 @@
 
 
 # ===================================================================
+# P1-MÅLER: INITIALISERING VED OPPSTART
+# ===================================================================
+- id: p1_initialiser_ved_oppstart
+  alias: "P1 - Initialiser ved oppstart"
+  description: "Setter P1-startverdi ved Home Assistant oppstart for å unngå feil beregning."
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay:
+        seconds: 30
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.p1_meter_siste_time_start
+      data:
+        value: "{{ states('sensor.p1_meter_energy_import') | float(0) }}"
+
+# ===================================================================
 # P1-MÅLER: LAGRE TIMESTART
 # ===================================================================
 - id: p1_lagre_timestart
