@@ -477,11 +477,11 @@
 
 
 # ===================================================================
-# EFFEKTLEDD: OPPDATER TOPP-3
+# DAGSMAKS: OPPDATER HVER TIME (2025-MODELL)
 # ===================================================================
-- id: effektledd_oppdater_topper
-  alias: "Effektledd - Oppdater topp-3"
-  description: "Kjører 30 sek etter timeskiftet for å logge korrekt timeforbruk fra P1-måler."
+- id: dagsmaks_oppdater_hver_time
+  alias: "Dagsmaks - Oppdater hver time"
+  description: "Oppdaterer dagens maks hvis denne timen var høyere. Kjører 30 sek etter timeskifte."
   mode: single
   trigger:
     - platform: time_pattern
@@ -493,107 +493,360 @@
       value_template: "{{ states('sensor.p1_timeforbruk_korrekt') not in ['unavailable', 'unknown'] }}"
   action:
     - variables:
-        new_peak: "{{ states('sensor.p1_timeforbruk_korrekt') | float(0) }}"
+        timeforbruk: "{{ states('sensor.p1_timeforbruk_korrekt') | float(0) }}"
+        dagsmaks: "{{ states('input_number.dagsmaks_idag') | float(0) }}"
+    - if:
+        - condition: template
+          value_template: "{{ timeforbruk > dagsmaks }}"
+      then:
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.dagsmaks_idag
+          data:
+            value: "{{ timeforbruk }}"
+        - service: system_log.write
+          data:
+            message: "Dagsmaks oppdatert: {{ timeforbruk }} kWh (time {{ (now() - timedelta(hours=1)).strftime('%H') }}:00)"
+            level: info
+
+# ===================================================================
+# EFFEKTLEDD: OPPDATER TOPP-3 DAGER (VED MIDNATT)
+# ===================================================================
+- id: effektledd_oppdater_topp3_dager
+  alias: "Effektledd - Oppdater topp-3 dager (midnatt)"
+  description: "Sammenligner dagens maks med topp-3 DAGER. Sikrer distinkte dager (2025-modell)."
+  mode: single
+  trigger:
+    - platform: time
+      at: "23:59:00"
+  condition:
+    - condition: template
+      value_template: "{{ states('input_number.dagsmaks_idag') | float(0) > 0 }}"
+  action:
+    - variables:
+        dagsmaks: "{{ states('input_number.dagsmaks_idag') | float(0) }}"
+        idag_dag: "{{ now().day }}"
         peak1: "{{ states('input_number.peak_1_verdi') | float(0) }}"
+        peak1_dag: "{{ states('input_number.peak_1_dag') | int(0) }}"
         peak2: "{{ states('input_number.peak_2_verdi') | float(0) }}"
+        peak2_dag: "{{ states('input_number.peak_2_dag') | int(0) }}"
         peak3: "{{ states('input_number.peak_3_verdi') | float(0) }}"
-        timestamp: "{{ (now() - timedelta(hours=1)).strftime('%d.%m.%Y') }} (kl. {{ (now() - timedelta(hours=1)).strftime('%H') }}-{{ now().strftime('%H') }})"
+        peak3_dag: "{{ states('input_number.peak_3_dag') | int(0) }}"
+        timestamp: "{{ now().strftime('%d.%m.%Y') }}"
+
+    # Sjekk om dagen allerede finnes i topp-3
     - choose:
+        # Hvis idag_dag == peak1_dag: Oppdater peak1 hvis høyere
         - conditions:
-            - "{{ new_peak > peak1 }}"
+            - "{{ idag_dag == peak1_dag }}"
           sequence:
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_3_verdi
-              data:
-                value: "{{ peak2 }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_3_tidspunkt
-              data:
-                value: "{{ states('input_text.peak_2_tidspunkt') }}"
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_2_verdi
-              data:
-                value: "{{ peak1 }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_2_tidspunkt
-              data:
-                value: "{{ states('input_text.peak_1_tidspunkt') }}"
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_1_verdi
-              data:
-                value: "{{ new_peak }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_1_tidspunkt
-              data:
-                value: "{{ timestamp }}"
-            - service: persistent_notification.create
-              data:
-                title: "🏆 NY TOPP #1!"
-                message: >
-                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
-                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
-            - service: system_log.write
-              data:
-                message: "Ny peak #1: {{ new_peak }} kWh ({{ timestamp }})"
-                level: info
+            - if:
+                - condition: template
+                  value_template: "{{ dagsmaks > peak1 }}"
+              then:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_1_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_1_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                - service: persistent_notification.create
+                  data:
+                    title: "🔄 Peak #1 oppdatert (samme dag)"
+                    message: "{{ timestamp }}: {{ dagsmaks }} kWh (erstattet {{ peak1 }} kWh)"
+
+        # Hvis idag_dag == peak2_dag: Oppdater peak2 hvis høyere, sjekk om den hopper til peak1
         - conditions:
-            - "{{ new_peak > peak2 }}"
+            - "{{ idag_dag == peak2_dag }}"
           sequence:
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_3_verdi
-              data:
-                value: "{{ peak2 }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_3_tidspunkt
-              data:
-                value: "{{ states('input_text.peak_2_tidspunkt') }}"
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_2_verdi
-              data:
-                value: "{{ new_peak }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_2_tidspunkt
-              data:
-                value: "{{ timestamp }}"
-            - service: persistent_notification.create
-              data:
-                title: "🥈 Ny topp #2"
-                message: >
-                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
-                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+            - if:
+                - condition: template
+                  value_template: "{{ dagsmaks > peak2 }}"
+              then:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_2_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_2_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                # Sjekk om den nye peak2 > peak1 (da må de bytte plass)
+                - if:
+                    - condition: template
+                      value_template: "{{ dagsmaks > peak1 }}"
+                  then:
+                    # Bytt peak1 og peak2
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_2_verdi
+                      data:
+                        value: "{{ peak1 }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.peak_2_tidspunkt
+                      data:
+                        value: "{{ states('input_text.peak_1_tidspunkt') }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_2_dag
+                      data:
+                        value: "{{ peak1_dag }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_1_verdi
+                      data:
+                        value: "{{ dagsmaks }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.peak_1_tidspunkt
+                      data:
+                        value: "{{ timestamp }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_1_dag
+                      data:
+                        value: "{{ idag_dag }}"
+
+        # Hvis idag_dag == peak3_dag: Samme som peak2
         - conditions:
-            - "{{ new_peak > peak3 }}"
+            - "{{ idag_dag == peak3_dag }}"
           sequence:
-            - service: input_number.set_value
-              target:
-                entity_id: input_number.peak_3_verdi
-              data:
-                value: "{{ new_peak }}"
-            - service: input_text.set_value
-              target:
-                entity_id: input_text.peak_3_tidspunkt
-              data:
-                value: "{{ timestamp }}"
-            - service: persistent_notification.create
-              data:
-                title: "🥉 Ny topp #3"
-                message: >
-                  Ny topp: {{ new_peak }} kWh ({{ timestamp }})
-                  Kapasitetsledd nå: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+            - if:
+                - condition: template
+                  value_template: "{{ dagsmaks > peak3 }}"
+              then:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_3_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                # Sjekk om den må hoppe videre oppover
+                - if:
+                    - condition: template
+                      value_template: "{{ dagsmaks > peak2 }}"
+                  then:
+                    # Flytt peak2 til peak3, ny verdi til peak2
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_3_verdi
+                      data:
+                        value: "{{ peak2 }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.peak_3_tidspunkt
+                      data:
+                        value: "{{ states('input_text.peak_2_tidspunkt') }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_3_dag
+                      data:
+                        value: "{{ peak2_dag }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_2_verdi
+                      data:
+                        value: "{{ dagsmaks }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.peak_2_tidspunkt
+                      data:
+                        value: "{{ timestamp }}"
+                    - service: input_number.set_value
+                      target:
+                        entity_id: input_number.peak_2_dag
+                      data:
+                        value: "{{ idag_dag }}"
+                    # Sjekk om den nye peak2 > peak1
+                    - if:
+                        - condition: template
+                          value_template: "{{ dagsmaks > peak1 }}"
+                      then:
+                        # Flytt peak1 til peak2, ny verdi til peak1
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.peak_2_verdi
+                          data:
+                            value: "{{ peak1 }}"
+                        - service: input_text.set_value
+                          target:
+                            entity_id: input_text.peak_2_tidspunkt
+                          data:
+                            value: "{{ states('input_text.peak_1_tidspunkt') }}"
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.peak_2_dag
+                          data:
+                            value: "{{ peak1_dag }}"
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.peak_1_verdi
+                          data:
+                            value: "{{ dagsmaks }}"
+                        - service: input_text.set_value
+                          target:
+                            entity_id: input_text.peak_1_tidspunkt
+                          data:
+                            value: "{{ timestamp }}"
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.peak_1_dag
+                          data:
+                            value: "{{ idag_dag }}"
+
+      # STANDARD: Ny dag, sammenlign med topp-3
+      default:
+        - choose:
+            # Hvis dagsmaks > peak1: Ny peak #1
+            - conditions:
+                - "{{ dagsmaks > peak1 }}"
+              sequence:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_verdi
+                  data:
+                    value: "{{ peak2 }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_3_tidspunkt
+                  data:
+                    value: "{{ states('input_text.peak_2_tidspunkt') }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_dag
+                  data:
+                    value: "{{ peak2_dag }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_2_verdi
+                  data:
+                    value: "{{ peak1 }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_2_tidspunkt
+                  data:
+                    value: "{{ states('input_text.peak_1_tidspunkt') }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_2_dag
+                  data:
+                    value: "{{ peak1_dag }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_1_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_1_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_1_dag
+                  data:
+                    value: "{{ idag_dag }}"
+                - service: persistent_notification.create
+                  data:
+                    title: "🏆 NY TOPP #1!"
+                    message: >
+                      {{ timestamp }}: {{ dagsmaks }} kWh
+                      Kapasitetsledd: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+                      Kostnad: {{ states('sensor.kapasitetsledd_kostnad') }} kr/mnd
+
+            # Hvis dagsmaks > peak2: Ny peak #2
+            - conditions:
+                - "{{ dagsmaks > peak2 }}"
+              sequence:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_verdi
+                  data:
+                    value: "{{ peak2 }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_3_tidspunkt
+                  data:
+                    value: "{{ states('input_text.peak_2_tidspunkt') }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_dag
+                  data:
+                    value: "{{ peak2_dag }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_2_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_2_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_2_dag
+                  data:
+                    value: "{{ idag_dag }}"
+                - service: persistent_notification.create
+                  data:
+                    title: "🥈 Ny topp #2"
+                    message: >
+                      {{ timestamp }}: {{ dagsmaks }} kWh
+                      Kapasitetsledd: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+
+            # Hvis dagsmaks > peak3: Ny peak #3
+            - conditions:
+                - "{{ dagsmaks > peak3 }}"
+              sequence:
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_verdi
+                  data:
+                    value: "{{ dagsmaks }}"
+                - service: input_text.set_value
+                  target:
+                    entity_id: input_text.peak_3_tidspunkt
+                  data:
+                    value: "{{ timestamp }}"
+                - service: input_number.set_value
+                  target:
+                    entity_id: input_number.peak_3_dag
+                  data:
+                    value: "{{ idag_dag }}"
+                - service: persistent_notification.create
+                  data:
+                    title: "🥉 Ny topp #3"
+                    message: >
+                      {{ timestamp }}: {{ dagsmaks }} kWh
+                      Kapasitetsledd: {{ states('sensor.kapasitetsledd_aktuelt') }} kW
+
+    # Nullstill dagsmaks for ny dag (kl 00:00:30)
+    - delay: "00:01:00"
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dagsmaks_idag
+      data:
+        value: 0
+    - service: system_log.write
+      data:
+        message: "Dagsmaks nullstilt for ny dag"
+        level: info
 
 - id: effektledd_nullstill_topper
   alias: "Effektledd - Nullstill ved månedsskifte"
-  description: "Nullstiller topp 3-verdiene den første i hver måned."
+  description: "Nullstiller topp 3-verdiene den første i hver måned (2025-modell)."
   mode: single
   trigger:
     - platform: time
@@ -608,6 +861,10 @@
           - input_number.peak_1_verdi
           - input_number.peak_2_verdi
           - input_number.peak_3_verdi
+          - input_number.peak_1_dag
+          - input_number.peak_2_dag
+          - input_number.peak_3_dag
+          - input_number.dagsmaks_idag
       data:
         value: 0
     - service: input_text.set_value
@@ -620,11 +877,14 @@
         value: "Ingen data"
     - service: persistent_notification.create
       data:
-        title: "🔄 Effektledd nullstilt"
-        message: "Ny måned - topp 3 nullstilt. Kapasitetsledd starter på nytt!"
+        title: "🔄 Effektledd nullstilt (2025)"
+        message: >
+          Ny måned - topp 3 DAGER nullstilt!
+          Kapasitetsledd starter på nytt.
+          Modell: Glitre Nett 2025 (trappetrinn)
     - service: system_log.write
       data:
-        message: "Effektledd: Månedlige topper nullstilt"
+        message: "Effektledd: Månedlige topper nullstilt (2025-modell med dagsmaks)"
         level: info
 
 

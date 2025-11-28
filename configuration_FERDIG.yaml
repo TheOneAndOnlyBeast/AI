@@ -104,6 +104,44 @@ input_number:
     mode: box
     icon: mdi:counter
 
+  # NYE: Daglig tracking for korrekt kapasitetsledd-beregning (2025-modell)
+  dagsmaks_idag:
+    name: "Dagsmaks i dag"
+    min: 0
+    max: 50
+    step: 0.01
+    unit_of_measurement: "kWh"
+    mode: box
+    icon: mdi:chart-line
+    initial: 0
+
+  peak_1_dag:
+    name: "Peak #1 - Dag i måned"
+    min: 0
+    max: 31
+    step: 1
+    mode: box
+    icon: mdi:calendar
+    initial: 0
+
+  peak_2_dag:
+    name: "Peak #2 - Dag i måned"
+    min: 0
+    max: 31
+    step: 1
+    mode: box
+    icon: mdi:calendar
+    initial: 0
+
+  peak_3_dag:
+    name: "Peak #3 - Dag i måned"
+    min: 0
+    max: 31
+    step: 1
+    mode: box
+    icon: mdi:calendar
+    initial: 0
+
   # NYE: Kapasitetsledd-system
   kapasitetsledd_maal:
     name: "Kapasitetsledd - Målgrense"
@@ -299,10 +337,20 @@ template:
           {% endif %}
 
       # ===================================================================
-      # NYE: KAPASITETSLEDD-SENSORER
+      # NYE: KAPASITETSLEDD-SENSORER (2025 MODELL - GLITRE NETT)
       # ===================================================================
 
-      # Aktuelt kapasitetsledd (gjennomsnitt av topp-3)
+      # Dagens maks hittil (oppdateres hver time)
+      - name: "Dagens maks hittil"
+        unique_id: dagens_maks_hittil
+        unit_of_measurement: "kWh"
+        icon: mdi:chart-box
+        state: >
+          {% set dagsmaks = states('input_number.dagsmaks_idag') | float(0) %}
+          {% set timeforbruk = states('sensor.p1_timeforbruk_korrekt') | float(0) %}
+          {{ [dagsmaks, timeforbruk] | max | round(2) }}
+
+      # Aktuelt kapasitetsledd (gjennomsnitt av topp-3 DAGER)
       - name: "Kapasitetsledd aktuelt"
         unique_id: kapasitetsledd_aktuelt
         unit_of_measurement: "kW"
@@ -329,8 +377,83 @@ template:
           peak_1_tid: "{{ states('input_text.peak_1_tidspunkt') }}"
           peak_2_tid: "{{ states('input_text.peak_2_tidspunkt') }}"
           peak_3_tid: "{{ states('input_text.peak_3_tidspunkt') }}"
+          peak_1_dag: "{{ states('input_number.peak_1_dag') | int(0) }}"
+          peak_2_dag: "{{ states('input_number.peak_2_dag') | int(0) }}"
+          peak_3_dag: "{{ states('input_number.peak_3_dag') | int(0) }}"
+
+      # GLITRE NETT 2025: Trappetrinn (0-2, 2-5, 5-10, 10-15, 15-20, 20+)
+      - name: "Kapasitetsledd trinn"
+        unique_id: kapasitetsledd_trinn
+        icon: mdi:stairs
+        state: >
+          {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+          {% if kap < 2.0 %}
+            Trinn 1 (0-2 kW)
+          {% elif kap < 5.0 %}
+            Trinn 2 (2-5 kW)
+          {% elif kap < 10.0 %}
+            Trinn 3 (5-10 kW)
+          {% elif kap < 15.0 %}
+            Trinn 4 (10-15 kW)
+          {% elif kap < 20.0 %}
+            Trinn 5 (15-20 kW)
+          {% else %}
+            Trinn 6 (20+ kW)
+          {% endif %}
+        attributes:
+          trinn_nummer: >
+            {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+            {% if kap < 2.0 %}1{% elif kap < 5.0 %}2{% elif kap < 10.0 %}3{% elif kap < 15.0 %}4{% elif kap < 20.0 %}5{% else %}6{% endif %}
+          pris_naa: >
+            {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+            {% if kap < 2.0 %}160{% elif kap < 5.0 %}205{% elif kap < 10.0 %}350{% elif kap < 15.0 %}725{% elif kap < 20.0 %}940{% else %}1200{% endif %}
+          neste_grense: >
+            {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+            {% if kap < 2.0 %}2.0{% elif kap < 5.0 %}5.0{% elif kap < 10.0 %}10.0{% elif kap < 15.0 %}15.0{% elif kap < 20.0 %}20.0{% else %}99{% endif %}
+          neste_pris: >
+            {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+            {% if kap < 2.0 %}205{% elif kap < 5.0 %}350{% elif kap < 10.0 %}725{% elif kap < 15.0 %}940{% elif kap < 20.0 %}1200{% else %}1200{% endif %}
+
+      # KOSTNAD PER MÅNED (basert på trinn)
+      - name: "Kapasitetsledd kostnad"
+        unique_id: kapasitetsledd_kostnad
+        unit_of_measurement: "kr/mnd"
+        icon: mdi:currency-usd
+        device_class: monetary
+        state: >
+          {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+          {% if kap < 2.0 %}
+            160
+          {% elif kap < 5.0 %}
+            205
+          {% elif kap < 10.0 %}
+            350
+          {% elif kap < 15.0 %}
+            725
+          {% elif kap < 20.0 %}
+            940
+          {% else %}
+            1200
+          {% endif %}
+        attributes:
+          formel: "Glitre Nett 2025 - Trappetrinn"
+          trinn: "{{ states('sensor.kapasitetsledd_trinn') }}"
+          potensiale_hvis_prognose: >
+            {% set hvis_kap = states('sensor.kapasitetsledd_hvis_prognose') | float(0) %}
+            {% if hvis_kap < 2.0 %}160{% elif hvis_kap < 5.0 %}205{% elif hvis_kap < 10.0 %}350{% elif hvis_kap < 15.0 %}725{% elif hvis_kap < 20.0 %}940{% else %}1200{% endif %}
+
+      # Margin til neste trinn (i kW)
+      - name: "Kapasitetsledd margin til trinn"
+        unique_id: kapasitetsledd_margin_trinn
+        unit_of_measurement: "kW"
+        icon: mdi:speedometer
+        state: >
+          {% set kap = states('sensor.kapasitetsledd_aktuelt') | float(0) %}
+          {% set neste = state_attr('sensor.kapasitetsledd_trinn', 'neste_grense') | float(99) %}
+          {{ (neste - kap) | round(2) }}
 
       # Trygg grense (hva kan jeg bruke uten å påvirke kapasitetsledd?)
+      # OPPDATERT 2025: Tar hensyn til trappetrinn-grenser
       - name: "Kapasitetsledd trygg grense"
         unique_id: kapasitetsledd_trygg_grense
         unit_of_measurement: "kWh"
@@ -340,11 +463,17 @@ template:
           {% set peak2 = states('input_number.peak_2_verdi') | float(0) %}
           {% set peak3 = states('input_number.peak_3_verdi') | float(0) %}
           {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
+          {% set neste_grense = state_attr('sensor.kapasitetsledd_trinn', 'neste_grense') | float(99) %}
           {% if peak3 == 0 %}
-            {{ maal | round(1) }}
+            {{ [maal, neste_grense - 0.2] | min | round(1) }}
           {% else %}
-            {{ (peak3 - 0.1) | round(1) }}
+            {{ [(peak3 - 0.1), (neste_grense - 0.2)] | min | round(1) }}
           {% endif %}
+        attributes:
+          beskrivelse: >
+            {% set neste_grense = state_attr('sensor.kapasitetsledd_trinn', 'neste_grense') | float(99) %}
+            {% set margin = (neste_grense - states('sensor.kapasitetsledd_aktuelt') | float(0)) | round(1) %}
+            Hold deg under denne grensen for å unngå å hoppe til neste trinn. Margin til neste trinn: {{ margin }} kW
 
       # Potensielt kapasitetsledd hvis prognosen realiseres
       - name: "Kapasitetsledd hvis prognose"
@@ -387,6 +516,7 @@ template:
             {% endif %}
 
       # Kutt-anbefaling (skal vi kutte nå?)
+      # OPPDATERT 2025: Aggressiv beskyttelse mot trinnhopp
       - name: "Kapasitetsledd kutt anbefaling"
         unique_id: kapasitetsledd_kutt_anbefaling
         icon: mdi:alert-decagram
@@ -395,8 +525,16 @@ template:
           {% set hvis_prognose = states('sensor.kapasitetsledd_hvis_prognose') | float(0) %}
           {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
           {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
-          {% if prognose > trygg and hvis_prognose > maal %}
+          {% set neste_grense = state_attr('sensor.kapasitetsledd_trinn', 'neste_grense') | float(99) %}
+          {% set neste_pris = state_attr('sensor.kapasitetsledd_trinn', 'neste_pris') | float(0) %}
+          {% set pris_naa = state_attr('sensor.kapasitetsledd_trinn', 'pris_naa') | float(0) %}
+          {% set pris_okning = neste_pris - pris_naa %}
+          {% if prognose > trygg and hvis_prognose >= neste_grense %}
             KUTT NÅ!
+          {% elif prognose > trygg and hvis_prognose > maal %}
+            KUTT NÅ!
+          {% elif prognose > (neste_grense - 0.5) %}
+            VARSLING
           {% elif prognose > trygg %}
             VARSLING
           {% else %}
@@ -408,13 +546,25 @@ template:
             {% set hvis_prognose = states('sensor.kapasitetsledd_hvis_prognose') | float(0) %}
             {% set maal = states('input_number.kapasitetsledd_maal') | float(5.0) %}
             {% set trygg = states('sensor.kapasitetsledd_trygg_grense') | float(0) %}
-            {% if prognose > trygg and hvis_prognose > maal %}
+            {% set neste_grense = state_attr('sensor.kapasitetsledd_trinn', 'neste_grense') | float(99) %}
+            {% set neste_pris = state_attr('sensor.kapasitetsledd_trinn', 'neste_pris') | float(0) %}
+            {% set pris_naa = state_attr('sensor.kapasitetsledd_trinn', 'pris_naa') | float(0) %}
+            {% set pris_okning = neste_pris - pris_naa %}
+            {% if prognose > trygg and hvis_prognose >= neste_grense %}
+              🚨 KRITISK: Prognose {{ prognose }} kWh vil flytte deg til neste trinn ({{ neste_grense }} kW). Kostnadsøkning: +{{ pris_okning }} kr/mnd!
+            {% elif prognose > trygg and hvis_prognose > maal %}
               Prognose {{ prognose }} kWh vil gi kapasitetsledd {{ hvis_prognose }} kW (over mål {{ maal }} kW)
+            {% elif prognose > (neste_grense - 0.5) %}
+              ⚠️ ADVARSEL: Prognose {{ prognose }} kWh er farlig nær neste trinn ({{ neste_grense }} kW)
             {% elif prognose > trygg %}
-              Prognose {{ prognose }} kWh er over trygg grense {{ trygg }} kWh, men kapasitetsledd {{ hvis_prognose }} kW er under mål
+              Prognose {{ prognose }} kWh er over trygg grense {{ trygg }} kWh
             {% else %}
-              Prognose {{ prognose }} kWh er under trygg grense {{ trygg }} kWh
+              ✅ Prognose {{ prognose }} kWh er trygg (under {{ trygg }} kWh)
             {% endif %}
+          potensial_kostnadsøkning: >
+            {% set neste_pris = state_attr('sensor.kapasitetsledd_trinn', 'neste_pris') | float(0) %}
+            {% set pris_naa = state_attr('sensor.kapasitetsledd_trinn', 'pris_naa') | float(0) %}
+            {{ neste_pris - pris_naa }} kr/mnd
 
   # ===================================================================
   # BINARY SENSOR

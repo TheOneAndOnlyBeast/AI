@@ -63,18 +63,29 @@ views:
               - from: 5
                 color: '#F44336'
       - type: entities
-        title: Kapasitetsledd
+        title: Kapasitetsledd (Glitre Nett 2025)
         show_header_toggle: false
         entities:
           - entity: sensor.kapasitetsledd_aktuelt
             name: Nå
             icon: mdi:transmission-tower
+          - entity: sensor.kapasitetsledd_trinn
+            name: Trinn
+            icon: mdi:stairs
+          - entity: sensor.kapasitetsledd_kostnad
+            name: Kostnad
+            icon: mdi:currency-usd
+          - type: divider
+          - entity: sensor.kapasitetsledd_margin_til_trinn
+            name: Margin til neste trinn
+            icon: mdi:speedometer
+          - entity: sensor.dagens_maks_hittil
+            name: Dagens maks (hittil)
+            icon: mdi:chart-box
+          - type: divider
           - entity: input_number.kapasitetsledd_maal
             name: Mål
             icon: mdi:target
-          - entity: sensor.kapasitetsledd_margin
-            name: Margin
-            icon: mdi:gauge
           - entity: sensor.kapasitetsledd_trygg_grense
             name: Trygg grense
             icon: mdi:shield-check
@@ -88,7 +99,8 @@ views:
         content: >
           <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2
           100%); padding: 20px; border-radius: 16px; margin: 8px 0;">
-            <h3 style="margin: 0 0 15px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3</h3>
+            <h3 style="margin: 0 0 10px 0; text-align: center; color: #1a1a1a;">🏆 Topp-3 DAGER (2025-modell)</h3>
+            <div style="text-align: center; font-size: 12px; color: #666; margin-bottom: 15px;">Høyeste timeforbruk per dag fra 3 distinkte dager</div>
 
             <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
               <tr style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -117,8 +129,20 @@ views:
               </div>
             </div>
 
+            <div style="margin-top: 10px; padding: 10px; background: {% set trinn = state_attr('sensor.kapasitetsledd_trinn', 'trinn_nummer') | int(1) %}{% if trinn == 1 %}rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50{% elif trinn == 2 %}rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3{% elif trinn == 3 %}rgba(255, 152, 0, 0.1); border-left: 4px solid #FF9800{% else %}rgba(244, 67, 54, 0.1); border-left: 4px solid #F44336{% endif %}; border-radius: 8px;">
+              <div style="font-size: 14px; color: #1a1a1a; font-weight: bold;">
+                {{ states('sensor.kapasitetsledd_trinn') }} = {{ states('sensor.kapasitetsledd_kostnad') }} kr/mnd
+              </div>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                Margin til neste trinn: {{ states('sensor.kapasitetsledd_margin_til_trinn') }} kW
+              </div>
+            </div>
+
             <div style="margin-top: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 8px;">
               <div style="font-size: 14px; color: #1a1a1a;">
+                <strong>📅 I dag (hittil):</strong> {{ states('sensor.dagens_maks_hittil') | float | round(2) }} kWh
+              </div>
+              <div style="font-size: 14px; color: #1a1a1a; margin-top: 4px;">
                 <strong>⏱️ Denne time:</strong> {{ states('sensor.p1_timeforbruk_korrekt') | float | round(2) }} kWh
               </div>
             </div>
